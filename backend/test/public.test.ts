@@ -17,6 +17,19 @@ describe('public API', () => {
     assert.equal(ready.json().database, 'ok')
   })
 
+  it('allows same-origin and configured origins, refuses others', async () => {
+    const same = await t.app.inject({ method: 'GET', url: '/api/universes', headers: { host: 'galaxy.example', origin: 'http://galaxy.example' } })
+    assert.equal(same.statusCode, 200)
+    assert.equal(same.headers['access-control-allow-origin'], 'http://galaxy.example')
+    const configured = await t.app.inject({ method: 'GET', url: '/api/universes', headers: { origin: 'http://localhost:5173' } })
+    assert.equal(configured.statusCode, 200)
+    const other = await t.app.inject({ method: 'GET', url: '/api/universes', headers: { origin: 'https://evil.example' } })
+    assert.equal(other.statusCode, 403)
+    assert.equal(other.json().error.code, 'ORIGIN_NOT_ALLOWED')
+    const slash = await t.app.inject({ method: 'GET', url: '/api/health/' })
+    assert.equal(slash.statusCode, 200)
+  })
+
   it('lists universes as a flat list of peers with website counts', async () => {
     const res = await t.app.inject({ method: 'GET', url: '/api/universes' })
     assert.equal(res.statusCode, 200)

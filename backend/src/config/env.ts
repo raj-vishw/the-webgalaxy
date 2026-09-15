@@ -21,7 +21,9 @@ const schema = z.object({
   RATE_LIMIT_GLOBAL: z.coerce.number().int().positive().default(300),
   RATE_LIMIT_SEARCH: z.coerce.number().int().positive().default(60),
   RATE_LIMIT_SUBMIT: z.coerce.number().int().positive().default(5),
-  TRUST_PROXY: z.coerce.boolean().default(false),
+  // Behind Vercel (or any reverse proxy) the client address arrives in
+  // X-Forwarded-For; without this, rate limits would count the proxy instead.
+  TRUST_PROXY: z.preprocess((v) => (v === undefined || v === '' ? !!process.env.VERCEL : /^(1|true|yes)$/i.test(String(v))), z.boolean()),
 })
 
 export type Env = z.infer<typeof schema>
@@ -41,7 +43,17 @@ export function loadEnv(overrides: Partial<Record<keyof Env, string>> = {}): Env
   return env
 }
 
-export const corsOrigins = (env: Env) =>
-  env.CORS_ORIGINS.split(',')
+/**
+ * Origins allowed to call the API cross-site: the configured list plus the
+ * deployment's own Vercel URLs, so previews work without per-deployment
+ * configuration. Same-origin requests are allowed separately (see app.ts).
+ */
+export const corsOrigins = (env: Env) => {
+  const configured = env.CORS_ORIGINS.split(',')
     .map((o) => o.trim())
     .filter(Boolean)
+  for (const host of [process.env.VERCEL_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL, process.env.VERCEL_BRANCH_URL]) {
+    if (host) configured.push(`https://${host}`)
+  }
+  return configured
+}

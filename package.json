@@ -3,13 +3,17 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "dev": "concurrently -n web,api -c cyan,magenta \"npm:dev:web\" \"npm:dev:api\"",
     "dev:web": "vite",
     "dev:api": "npm run dev --workspace backend",
     "build": "tsc -b && vite build",
     "build:all": "npm run build && npm run build --workspace backend",
-    "lint": "oxlint src backend/src",
+    "lint": "oxlint src api backend/src",
+    "typecheck": "tsc -p api/tsconfig.json && npm run typecheck --workspace backend",
     "test": "vitest run && npm test --workspace backend",
     "test:web": "vitest run",
     "test:api": "npm test --workspace backend",

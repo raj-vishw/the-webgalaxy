@@ -38,6 +38,8 @@ export async function buildApp({ env, db, rateLimit: withRateLimit = true }: Bui
           },
     trustProxy: env.TRUST_PROXY,
     bodyLimit: 64 * 1024,
+    // Proxies and rewrites (Vercel's `/health/:path*`) may add a trailing slash.
+    ignoreTrailingSlash: true,
   })
 
   const ctx: AppContext = { db, env, cache: new TtlCache(), log: app.log }
@@ -45,14 +47,20 @@ export async function buildApp({ env, db, rateLimit: withRateLimit = true }: Bui
   await app.register(helmet, { contentSecurityPolicy: false })
   const localhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/
   await app.register(cors, {
-    origin: (origin, cb) => {
-      // Same-origin / server-to-server requests carry no Origin header;
-      // any localhost port is fine outside production.
-      if (!origin || corsOrigins(env).includes(origin) || (env.NODE_ENV !== 'production' && localhost.test(origin))) return cb(null, true)
-      cb(new AppError(403, 'ORIGIN_NOT_ALLOWED', 'This origin may not call the API.'), false)
+    delegator: (request, cb) => {
+      const origin = request.headers.origin
+      // Server-to-server requests carry no Origin header. Browsers send one on
+      // same-origin POSTs too, so the page's own host is always allowed (the
+      // frontend and this API share a domain on Vercel); any localhost port
+      // is fine outside production.
+      const allowed =
+        !origin ||
+        origin === `${request.protocol}://${request.host}` ||
+        corsOrigins(env).includes(origin) ||
+        (env.NODE_ENV !== 'production' && localhost.test(origin))
+      if (!allowed) return cb(new AppError(403, 'ORIGIN_NOT_ALLOWED', 'This origin may not call the API.'))
+      cb(null, { origin: true, methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization'] })
     },
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
   })
   await app.register(jwt, { secret: env.JWT_SECRET })
   if (withRateLimit) {
@@ -74,6 +82,8 @@ export async function buildApp({ env, db, rateLimit: withRateLimit = true }: Bui
   })
 
   await app.register(healthRoutes, ctx)
+  // Also under /api so the checks work wherever only /api/* reaches the API.
+  await app.register(async (api) => healthRoutes(api, ctx), { prefix: '/api' })
   await app.register(async (api) => {
     await api.register(publicRoutes, ctx)
     await api.register(async (admin) => adminRoutes(admin, ctx), { prefix: '/admin' })

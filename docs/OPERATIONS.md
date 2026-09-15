@@ -2,6 +2,14 @@
 
 How to run The WebGalaxy in production: deployment shape, configuration, database care, monitoring, and the security checklist.
 
+## Vercel
+
+The repository also deploys as a single Vercel project: static site plus one Node.js
+Function at `api/index.ts` that wraps the same Fastify app (`vercel.json` rewrites
+`/api/*` and `/health*` to it and everything else to `index.html`). Migrations run on
+the function's cold start; seed the production database once with
+`DATABASE_URL=… npm run db:seed`. See the README's "Deploying to Vercel".
+
 ## Topology
 
 Independently deployable parts:

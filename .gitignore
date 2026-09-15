@@ -16,3 +16,5 @@ coverage/
 *.png
 
 content/
+# vercel local build output
+.vercel
