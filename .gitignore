@@ -13,8 +13,11 @@ backend/data/
 backend/dist/
 coverage/
 
+# screenshots from local checks — real assets live in public/ and are kept
 *.png
+!public/*.png
 
+# directory data dumps (Curlie, Tranco)
 content/
 # vercel local build output
 .vercel
