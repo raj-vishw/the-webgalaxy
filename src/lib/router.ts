@@ -1,3 +1,4 @@
+import { isConsolePath } from './consolePath'
 import { useCatalogStore } from '../store/catalogStore'
 import { useGalaxyStore } from '../store/galaxyStore'
 import { galaxyNavigation, locationPath, parseLocationPath } from '../utils/navigation'
@@ -31,7 +32,7 @@ export function applyLocation(path = window.location.pathname): boolean {
 /** Keeps the address bar in step with the store and answers back/forward. */
 export function startRouter(): () => void {
   const sync = () => {
-    if (applying || window.location.pathname.startsWith('/admin')) return
+    if (applying || isConsolePath()) return
     const path = locationPath()
     if (path === window.location.pathname) return
     window.history.pushState(null, '', `${path}${window.location.search}${window.location.hash}`)

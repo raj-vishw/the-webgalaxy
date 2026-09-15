@@ -29,8 +29,8 @@ export function Login({ onLogin }: { onLogin: (user: User) => void }) {
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <form onSubmit={submit} className="w-full max-w-sm rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <h1 className="text-lg font-semibold">WebGalaxy Admin</h1>
-        <p className="mt-1 mb-5 text-sm text-gray-500">Content management for the galaxy. Administrator only.</p>
+        <h1 className="text-lg font-semibold">WebGalaxy Console</h1>
+        <p className="mt-1 mb-5 text-sm text-gray-500">Content management for the galaxy.</p>
         <div className="grid gap-4">
           <Field id="email" text="Email">
             <input id="email" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} className={input} />

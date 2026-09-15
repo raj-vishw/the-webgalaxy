@@ -22,11 +22,12 @@ const pageFromHash = (): Page => {
 }
 
 /**
- * The administration area, served at `/admin` inside the same build as the
- * galaxy but visually its own thing: a plain, fast content tool behind the
- * single administrator's sign-in. Sections are hash-routed (`/admin#websites`).
+ * The content console, served at its configured path (see lib/consolePath)
+ * inside the same build as the galaxy but visually its own thing: a plain,
+ * fast content tool behind the single sign-in. Sections are hash-routed
+ * (`#websites`).
  */
-export default function AdminApp() {
+export default function ConsoleApp() {
   // Without a stored token there is nothing to verify: straight to login.
   const [user, setUser] = useState<User | null | undefined>(() => (token.get() ? undefined : null))
   const [page, setPage] = useState<Page>(pageFromHash)

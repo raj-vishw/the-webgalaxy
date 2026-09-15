@@ -1,10 +1,10 @@
 /**
- * Admin HTTP client. Sends the session JWT, unwraps the API envelope and
+ * Console HTTP client. Sends the session JWT, unwraps the API envelope and
  * turns failures into `ApiError`s. The token lives in sessionStorage so it
  * dies with the tab.
  */
 export const API_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, '') || '/api'
-const TOKEN_KEY = 'webgalaxy.admin.token'
+const TOKEN_KEY = 'webgalaxy.console.token'
 
 export class ApiError extends Error {
   readonly status: number

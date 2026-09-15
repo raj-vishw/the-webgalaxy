@@ -1,17 +1,18 @@
 import { Suspense, lazy } from 'react'
 import App from './App'
 import { FallbackGalaxy } from './components/fallback/FallbackGalaxy'
-import { isAdminPath, supportsWebGL, wantsListView } from './lib/webgl'
+import { isConsolePath } from './lib/consolePath'
+import { supportsWebGL, wantsListView } from './lib/webgl'
 
-// `/admin` is the administration area — same build, its own screen, behind the administrator's sign-in.
-const AdminApp = lazy(() => import('./admin/AdminApp'))
+// The content console — same build, its own screen, behind the sign-in; only served at its configured path.
+const ConsoleApp = lazy(() => import('./console/ConsoleApp'))
 
-/** Picks the screen for this URL: the admin, the accessible list, or the galaxy. */
+/** Picks the screen for this URL: the console, the accessible list, or the galaxy. */
 export function Root() {
-  if (isAdminPath()) {
+  if (isConsolePath()) {
     return (
       <Suspense fallback={null}>
-        <AdminApp />
+        <ConsoleApp />
       </Suspense>
     )
   }

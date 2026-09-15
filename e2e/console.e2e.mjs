@@ -1,10 +1,16 @@
 import { API_URL, WEB_URL, check, finish, launch } from './shared.mjs'
 
 /**
- * Administration at /admin: sign-in, moderation, editing, trending,
- * relationships, deletion. Uses ADMIN_EMAIL / ADMIN_PASSWORD (defaults from
- * backend/.env.example) and creates its own uniquely named submission.
+ * The content console: sign-in, moderation, editing, trending, relationships,
+ * deletion. The web server under test must be built/started with the same
+ * VITE_ADMIN_PATH this script receives; ADMIN_EMAIL / ADMIN_PASSWORD default
+ * to backend/.env.example. Creates its own uniquely named submission.
  */
+const consolePath = process.env.VITE_ADMIN_PATH
+if (!consolePath) {
+  console.error('VITE_ADMIN_PATH is required (the console is only served at that path)')
+  process.exit(1)
+}
 const email = process.env.ADMIN_EMAIL ?? 'admin@webgalaxy.local'
 const password = process.env.ADMIN_PASSWORD ?? 'change-me-now'
 const name = `E2E Site ${Date.now().toString(36)}`
@@ -17,7 +23,7 @@ const api = async (path, init) => (await fetch(`${API_URL}${path}`, init)).json(
 const created = await api('/submissions', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ websiteName: name, url: `https://${slug}.example`, description: 'A freshly submitted website used to verify the moderation workflow.', requestedUniverseId: 'design', tags: ['testing'] }) })
 check('submission created', created.success, created.error?.message)
 
-await page.goto(`${WEB_URL}/admin`); await wait(800)
+await page.goto(`${WEB_URL}${consolePath}`); await wait(800)
 await page.getByLabel('Email').fill(email); await page.getByLabel('Password').fill('definitely-wrong-1'); await page.getByRole('button', { name: 'Sign in' }).click(); await wait(800)
 check('wrong password rejected', (await page.locator('[role=alert]').textContent()).includes('Incorrect'))
 await page.getByLabel('Password').fill(password); await page.getByRole('button', { name: 'Sign in' }).click(); await wait(1200)
