@@ -16,7 +16,8 @@ export interface CelestialFrameState {
   /** Camera distance and world radius, so bodies can adapt to close-ups. */
   distance: number
   size: number
-  lod: 'point' | 'full'
+  /** point → glow only; full → body; detail → body plus close-up extras. */
+  lod: 'point' | 'full' | 'detail'
 }
 
 export const createCelestialFrameState = (): CelestialFrameState => ({

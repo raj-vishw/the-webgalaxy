@@ -23,7 +23,7 @@ export function GlyphSprite({ glyph, frame, scale, color, opacity, additive = fa
     const sprite = ref.current
     if (!sprite) return
     const f = frame.current
-    sprite.visible = f.lod === 'full' && f.visibility > 0.2
+    sprite.visible = f.lod !== 'point' && f.visibility > 0.2
     sprite.material.opacity = opacity * f.visibility * (1 - f.dim * 0.5)
   })
 

@@ -3,6 +3,7 @@ import { useMemo, useRef } from 'react'
 import { AdditiveBlending, Color, Group, MathUtils, ShaderMaterial, Vector3 } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import { createRandom } from '../../../lib/random'
+import { sceneMotion } from '../../../lib/sceneMotion'
 import type { UniverseDefinition } from '../../../types/galaxy'
 import { starFragmentShader, starVertexShader } from '../shaders/pointShaders'
 
@@ -87,7 +88,7 @@ export function UniverseEnvironment({ universe, profile, pixelRatio }: UniverseE
     const distance = group.getWorldPosition(worldPosition).distanceTo(camera.position)
     const visibility = 1 - MathUtils.smoothstep(distance, universe.scale * 4.5, universe.scale * 7.5)
     group.visible = visibility > 0.01
-    material.uniforms.uTime.value = clock.elapsedTime
+    material.uniforms.uTime.value = clock.elapsedTime * sceneMotion.motionScale
     material.uniforms.uReveal.value = visibility
   })
 

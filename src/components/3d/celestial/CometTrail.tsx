@@ -2,6 +2,7 @@ import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef, type RefObject } from 'react'
 import { AdditiveBlending, BufferAttribute, Color, ShaderMaterial, Vector3 } from 'three'
 import type { WebsiteDefinition } from '../../../types/galaxy'
+import { accentFor } from '../../../utils/celestial'
 import { orbitPosition, type CometOrbit } from '../../../utils/generateOrbits'
 import { cometTrailFragmentShader, cometTrailVertexShader } from '../shaders/pointShaders'
 import type { CelestialFrameState } from './celestialFrame'
@@ -33,14 +34,15 @@ export function CometTrail({ website, orbit, frame, pixelRatio, span = 0.085, sa
     return { positions, ages }
   }, [samples])
 
+  const accent = accentFor(website)
   const uniforms = useMemo(
     () => ({
       uPixelRatio: { value: pixelRatio },
       uOpacity: { value: 0 },
       uSize: { value: 2.2 },
-      uColor: { value: new Color(website.accent).lerp(new Color('#ffffff'), 0.3) },
+      uColor: { value: new Color(accent).lerp(new Color('#ffffff'), 0.3) },
     }),
-    [pixelRatio, website.accent],
+    [pixelRatio, accent],
   )
 
   useFrame(() => {

@@ -13,6 +13,8 @@ export const sceneMotion = {
   pointer: { x: 0, y: 0 },
   /** Whether the user is actively dragging the camera. */
   dragging: false,
+  /** Global multiplier on continuous motion (orbits, drift, spin); reduced-motion lowers it. */
+  motionScale: 1,
   /**
    * Per-universe entry reveal (0 → 1), animated when the camera travels into a
    * universe so its websites appear in stages. Absent = fully revealed.

@@ -3,7 +3,7 @@ import { useMemo, useRef, type RefObject } from 'react'
 import { Color, type Mesh, type MeshBasicMaterial, type Sprite } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import type { WebsiteDefinition } from '../../../types/galaxy'
-import { glowFor } from '../../../utils/celestial'
+import { accentFor, glowFor, glyphFor } from '../../../utils/celestial'
 import type { CelestialFrameState } from './celestialFrame'
 import { GlyphSprite } from './GlyphSprite'
 import { ObjectGlow } from './ObjectGlow'
@@ -19,13 +19,15 @@ export function CometWebsite({ website, frame, profile }: CometWebsiteProps) {
   const coreRef = useRef<Mesh>(null)
   const comaRef = useRef<Sprite>(null)
   const glow = glowFor(website)
-  const coreColor = useMemo(() => new Color(website.accent).lerp(new Color('#ffffff'), 0.7), [website.accent])
+  const accent = accentFor(website)
+  const glyph = glyphFor(website)
+  const coreColor = useMemo(() => new Color(accent).lerp(new Color('#ffffff'), 0.7), [accent])
 
   useFrame(({ clock }) => {
     const f = frame.current
     const fade = f.visibility * (1 - f.dim * 0.55)
     if (coreRef.current) {
-      coreRef.current.visible = f.lod === 'full'
+      coreRef.current.visible = f.lod !== 'point'
       ;(coreRef.current.material as MeshBasicMaterial).opacity = fade
     }
     if (comaRef.current) {
@@ -41,9 +43,9 @@ export function CometWebsite({ website, frame, profile }: CometWebsiteProps) {
         <sphereGeometry args={[1, 14, 10]} />
         <meshBasicMaterial color={coreColor} transparent />
       </mesh>
-      <ObjectGlow ref={comaRef} color={website.accent} whiten={0.35} scale={4} />
+      <ObjectGlow ref={comaRef} color={accent} whiten={0.35} scale={4} />
       {profile.tier !== 'low' && (
-        <GlyphSprite glyph={website.glyph} frame={frame} scale={1.8} color="#ffffff" opacity={0.5} additive />
+        <GlyphSprite glyph={glyph} frame={frame} scale={1.8} color="#ffffff" opacity={0.5} additive />
       )}
     </group>
   )

@@ -14,8 +14,7 @@ import { GlowSprites } from '../visuals/GlowSprites'
 import { OrbitingBodies } from '../visuals/OrbitingBodies'
 import { UniverseParticles } from '../visuals/UniverseParticles'
 import { createUniverseFrameState, type UniverseFrameState } from '../visuals/universeFrame'
-import { UniverseEnvironment } from './UniverseEnvironment'
-import { UniverseWebsites } from './UniverseWebsites'
+import { UniverseContents } from './UniverseContents'
 
 interface UniverseProps {
   definition: UniverseDefinition
@@ -31,6 +30,8 @@ const REVEAL_WINDOW = 0.45
 const DIM_AMOUNT = 0.55
 /** How much the structure fades once the camera is inside it, so websites read clearly. */
 const PROXIMITY_DIM = 0.5
+/** How much non-active universes recede while another is entered. */
+const DISTANT_DIM = 0.3
 /** Gap between the structure's projected edge and its label, in CSS pixels. */
 const LABEL_GAP_PX = 12
 
@@ -50,6 +51,8 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
   const [hovered, setHovered] = useState(false)
   const active = useGalaxyStore((s) => s.activeUniverseId === definition.id)
   const dimmed = useGalaxyStore((s) => s.activeUniverseId === definition.id && s.selectedWebsiteId !== null)
+  // Other universes recede a little while one is entered — still present, just quieter.
+  const distant = useGalaxyStore((s) => s.viewMode !== 'galaxy' && s.activeUniverseId !== definition.id)
 
   const geometry = useMemo(
     () => buildUniverseGeometry(definition, profile.universeDetail),
@@ -72,12 +75,16 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
     const distance = root.getWorldPosition(worldPosition).distanceTo(camera.position)
     const proximity = 1 - MathUtils.smoothstep(distance, definition.scale * 2, definition.scale * 4.5)
     const k = 1 - Math.exp(-delta * 5)
-    frame.hover += ((hovered && !active ? 1 : 0) - frame.hover) * k
-    frame.dim += (Math.max(dimmed ? DIM_AMOUNT : 0, proximity * PROXIMITY_DIM) - frame.dim) * k * 0.6
+    // A freshly selected universe brightens and swells slightly until the
+    // camera is inside it, where the proximity dim takes over.
+    const selectedBoost = active ? 0.6 * (1 - proximity) : 0
+    frame.hover += (Math.max(hovered && !active ? 1 : 0, selectedBoost) - frame.hover) * k
+    const dimTarget = Math.max(dimmed ? DIM_AMOUNT : 0, proximity * PROXIMITY_DIM, distant ? DISTANT_DIM : 0)
+    frame.dim += (dimTarget - frame.dim) * k * 0.6
 
     const scale = definition.scale * (1 + (HOVER_SCALE - 1) * frame.hover)
     root.scale.setScalar(scale)
-    spin.rotation.y += geometry.spinSpeed * delta
+    spin.rotation.y += geometry.spinSpeed * delta * sceneMotion.motionScale
 
     const label = labelRef.current
     if (label) {
@@ -113,9 +120,7 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
         </Html>
       </group>
 
-      {/* Websites and environment live in unscaled space so sizes are in world units. */}
-      <UniverseWebsites universe={definition} profile={profile} pixelRatio={pixelRatio} />
-      <UniverseEnvironment universe={definition} profile={profile} pixelRatio={pixelRatio} />
+      <UniverseContents universe={definition} profile={profile} pixelRatio={pixelRatio} />
     </>
   )
 }

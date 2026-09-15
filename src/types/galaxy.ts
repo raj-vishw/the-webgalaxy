@@ -67,17 +67,18 @@ export type CelestialObjectType = 'star' | 'planet' | 'moon' | 'comet'
 export interface WebsiteDefinition {
   id: string
   name: string
-  url: string
   universeId: string
   objectType: CelestialObjectType
   /** 0–100: drives visual prominence (size, glow, how early it appears). */
-  importance: number
-  description: string
+  importance?: number
+  /** Missing URLs are tolerated: the object still renders, "Visit" is disabled. */
+  url?: string
+  description?: string
   tags?: string[]
-  /** Brand accent colour used to tint the object. */
-  accent: string
-  /** 1–4 character monogram integrated into the object's surface. */
-  glyph: string
+  /** Brand accent colour used to tint the object; falls back to the universe palette. */
+  accent?: string
+  /** 1–4 character monogram integrated into the object's surface; derived from the name if omitted. */
+  glyph?: string
   /** Picks one of the procedural surface patterns; derived from the id if omitted. */
   visualVariant?: number
   /** Optional multiplier on the importance-derived size. */
@@ -93,5 +94,9 @@ export interface WebsiteDefinition {
 
 export type IntroPhase = 'idle' | 'playing' | 'complete'
 
-/** Which level of The WebGalaxy the camera is currently exploring. */
-export type ExplorationMode = 'galaxy' | 'universe' | 'website'
+/**
+ * Which level of The WebGalaxy the camera is currently exploring. This is
+ * navigation state only — it says where the camera is, not that websites are
+ * nested under universes in any data sense.
+ */
+export type ViewMode = 'galaxy' | 'universe' | 'website'

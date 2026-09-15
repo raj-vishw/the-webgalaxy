@@ -1,10 +1,11 @@
 import { WebGalaxyScene } from './components/3d/WebGalaxyScene'
-import { ExplorationContext } from './components/ui/ExplorationContext'
+import { GalaxyNavigation } from './components/ui/GalaxyNavigation'
 import { GalaxyTitle } from './components/ui/GalaxyTitle'
-import { InteractionHint } from './components/ui/InteractionHint'
+import { InteractionHints } from './components/ui/InteractionHints'
 import { IntroSkip } from './components/ui/IntroSkip'
-import { Navigation } from './components/ui/Navigation'
-import { WebsitePlaceholder } from './components/ui/WebsitePlaceholder'
+import { LocationIndicator } from './components/ui/LocationIndicator'
+import { UniverseInfo } from './components/ui/UniverseInfo'
+import { WebsiteInfoPanel } from './components/ui/WebsiteInfoPanel'
 import { useExplorationKeys } from './hooks/useExplorationKeys'
 
 export default function App() {
@@ -13,10 +14,11 @@ export default function App() {
     <main className="relative h-full w-full overflow-hidden bg-space-950">
       <WebGalaxyScene />
       <GalaxyTitle />
-      <Navigation />
-      <ExplorationContext />
-      <WebsitePlaceholder />
-      <InteractionHint />
+      <GalaxyNavigation />
+      <LocationIndicator />
+      <UniverseInfo />
+      <WebsiteInfoPanel />
+      <InteractionHints />
       <IntroSkip />
     </main>
   )

@@ -7,7 +7,7 @@ import { celestialRegistry } from '../../../lib/celestialRegistry'
 import { sceneMotion } from '../../../lib/sceneMotion'
 import { useGalaxyStore } from '../../../store/galaxyStore'
 import type { UniverseDefinition, WebsiteDefinition } from '../../../types/galaxy'
-import { ENTRY_REVEAL_WINDOW, fadeDistancesFor, sizeFor } from '../../../utils/celestial'
+import { ENTRY_REVEAL_WINDOW, accentFor, fadeDistancesFor, sizeFor } from '../../../utils/celestial'
 import { orbitPosition, type OrbitSpec } from '../../../utils/generateOrbits'
 import { WebsiteLabel } from '../../ui/WebsiteLabel'
 import { WebsiteInteraction } from '../interaction/WebsiteInteraction'
@@ -16,6 +16,7 @@ import { CometTrail } from './CometTrail'
 import { CometWebsite } from './CometWebsite'
 import { MoonWebsite } from './MoonWebsite'
 import { PlanetWebsite } from './PlanetWebsite'
+import { SelectionRing } from './SelectionRing'
 import { StarWebsite } from './StarWebsite'
 
 interface CelestialObjectProps {
@@ -27,7 +28,10 @@ interface CelestialObjectProps {
 }
 
 const HIT_RADIUS: Record<WebsiteDefinition['objectType'], number> = { star: 3.2, planet: 1.6, moon: 2.2, comet: 3 }
+const RING_RADIUS: Record<WebsiteDefinition['objectType'], number> = { star: 2.6, planet: 1.55, moon: 1.7, comet: 2.4 }
 const LABEL_GAP_PX = 10
+/** Camera distance (× size) under which the close-up detail level kicks in. */
+const DETAIL_FACTOR = 22
 
 const worldPosition = new Vector3()
 const anchorPosition = new Vector3()
@@ -65,8 +69,9 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
     if (!root || !body) return
     const f = frameRef.current
 
-    // Hovering eases the orbit toward a near-stop so the object feels held.
-    f.time += delta * (1 - 0.7 * f.hover) * (1 - 0.5 * f.focus)
+    // Hovering eases the orbit toward a near-stop so the object feels held;
+    // focus and being a dimmed neighbour calm the motion further.
+    f.time += delta * sceneMotion.motionScale * (1 - 0.7 * f.hover) * (1 - 0.85 * f.focus) * (1 - 0.4 * f.dim)
 
     if (orbit.kind === 'moon') {
       const anchor = celestialRegistry.get(orbit.anchorId)
@@ -83,8 +88,9 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
     const entryReveal = MathUtils.smoothstep(entry, revealStart, revealEnd)
     f.visibility = (1 - MathUtils.smoothstep(distance, near, far)) * entryReveal
     // Hysteresis so objects don't flicker between detail levels at the boundary.
-    const lodDistance = profile.lodDistance * (f.lod === 'full' ? 1.15 : 1)
-    f.lod = distance < lodDistance ? 'full' : 'point'
+    const lodDistance = profile.lodDistance * (f.lod === 'point' ? 1 : 1.15)
+    const detailDistance = size * DETAIL_FACTOR * (f.lod === 'detail' ? 1.15 : 1)
+    f.lod = distance < detailDistance ? 'detail' : distance < lodDistance ? 'full' : 'point'
 
     const k = 1 - Math.exp(-delta * 6)
     f.hover += ((hovered ? 1 : 0) - f.hover) * k
@@ -120,6 +126,12 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
           )}
           {website.objectType === 'comet' && <CometWebsite website={website} frame={frameRef} profile={profile} />}
           <WebsiteInteraction website={website} radius={HIT_RADIUS[website.objectType]} frame={frameRef} />
+          <SelectionRing
+            frame={frameRef}
+            color={accentFor(website)}
+            radius={RING_RADIUS[website.objectType]}
+            reducedMotion={profile.reducedMotion}
+          />
         </group>
         {showLabel && (
           <Html center zIndexRange={[6, 0]} style={{ pointerEvents: 'none' }}>

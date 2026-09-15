@@ -64,6 +64,8 @@ export const websites: WebsiteDefinition[] = [
   { id: 'nasa', name: 'NASA', url: 'https://www.nasa.gov', universeId: 'science', objectType: 'star', importance: 92, description: 'Space exploration and discovery.', accent: '#fc3d21', glyph: 'NASA', tags: ['space'] },
   { id: 'arxiv', name: 'arXiv', url: 'https://arxiv.org', universeId: 'science', objectType: 'planet', importance: 78, description: 'Open-access research preprints.', accent: '#b31b1b', glyph: 'arX', tags: ['papers'] },
   { id: 'nature', name: 'Nature', url: 'https://www.nature.com', universeId: 'science', objectType: 'planet', importance: 76, description: 'Leading international science journal.', accent: '#dfe6ff', glyph: 'N', tags: ['journal'] },
+  // Deliberately sparse entry: exercises the metadata fallbacks.
+  { id: 'pubmed', name: 'PubMed', universeId: 'science', objectType: 'moon', orbitAnchorId: 'nature' },
   { id: 'wolframalpha', name: 'Wolfram Alpha', url: 'https://www.wolframalpha.com', universeId: 'science', objectType: 'moon', importance: 64, description: 'Computational knowledge engine.', accent: '#dd1100', glyph: 'Wα', orbitAnchorId: 'arxiv', tags: ['tools'] },
 
   // ─── Finance ─────────────────────────────────────────────────────────────

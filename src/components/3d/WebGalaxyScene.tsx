@@ -3,8 +3,9 @@ import { Suspense, lazy } from 'react'
 import { useQualityProfile } from '../../hooks/useQualityProfile'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { BackgroundNebula } from './BackgroundNebula'
-import { CameraController } from './CameraController'
+import { CameraController } from './camera/CameraController'
 import { DevBridge } from './DevBridge'
+import { GalaxyInteraction } from './interaction/GalaxyInteraction'
 import { PointerTracker } from './PointerTracker'
 import { StarField } from './StarField'
 import { UniverseField } from './UniverseField'
@@ -31,9 +32,10 @@ export function WebGalaxyScene() {
       {/* Soft key light for planets; everything else is self-illuminated. */}
       <ambientLight intensity={0.55} color="#c9d4ff" />
       <directionalLight position={[-40, 60, 80]} intensity={3.2} color="#fff4e6" />
-      <PointerTracker enabled={!profile.coarsePointer} />
+      <PointerTracker enabled={!profile.coarsePointer && !profile.reducedMotion} />
+      <GalaxyInteraction reducedMotion={profile.reducedMotion} />
       {import.meta.env.DEV && <DevBridge />}
-      <CameraController />
+      <CameraController profile={profile} />
       <BackgroundNebula />
       <StarField profile={profile} pixelRatio={pixelRatio} />
       <UniverseField profile={profile} pixelRatio={pixelRatio} />

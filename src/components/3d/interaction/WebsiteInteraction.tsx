@@ -1,8 +1,10 @@
 import { useCursor } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
-import { useEffect, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
+import type { Mesh } from 'three'
 import { useGalaxyStore } from '../../../store/galaxyStore'
 import type { WebsiteDefinition } from '../../../types/galaxy'
+import { tagInteraction } from '../../../utils/interaction'
 import type { CelestialFrameState } from '../celestial/celestialFrame'
 
 interface WebsiteInteractionProps {
@@ -14,9 +16,14 @@ interface WebsiteInteractionProps {
 
 /** Pointer handling for one website object: hover → store, click → select. */
 export function WebsiteInteraction({ website, radius, frame }: WebsiteInteractionProps) {
+  const meshRef = useRef<Mesh>(null)
   const [hovered, setHovered] = useState(false)
   const setHoveredWebsite = useGalaxyStore((s) => s.setHoveredWebsite)
   const selectWebsite = useGalaxyStore((s) => s.selectWebsite)
+
+  useEffect(() => {
+    if (meshRef.current) tagInteraction(meshRef.current, { kind: 'website', id: website.id })
+  }, [website.id])
 
   useCursor(hovered)
 
@@ -44,7 +51,7 @@ export function WebsiteInteraction({ website, radius, frame }: WebsiteInteractio
   }, [website.id])
 
   return (
-    <mesh onPointerOver={onPointerOver} onPointerOut={onPointerOut} onClick={onClick}>
+    <mesh ref={meshRef} onPointerOver={onPointerOver} onPointerOut={onPointerOut} onClick={onClick}>
       <sphereGeometry args={[radius, 10, 8]} />
       <meshBasicMaterial colorWrite={false} depthWrite={false} />
     </mesh>

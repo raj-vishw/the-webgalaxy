@@ -1,6 +1,6 @@
 import { createRandom } from '../lib/random'
 import type { UniverseDefinition, Vec3, WebsiteDefinition } from '../types/galaxy'
-import { sizeFor } from './celestial'
+import { importanceFor, sizeFor } from './celestial'
 
 /** Extra spacing between object footprints, in world units. */
 const MARGIN = 2.4
@@ -47,13 +47,13 @@ export function generatePositions(
 
   const toPlace = websites
     .filter((w) => w.objectType !== 'comet' && !anchorFor(w, websites))
-    .sort((a, b) => b.importance - a.importance)
+    .sort((a, b) => importanceFor(b) - importanceFor(a))
 
   const placed: { p: Vec3; r: number }[] = []
 
   for (const website of toPlace) {
     const footprint = sizeFor(website) + (moonReach.get(website.id) ?? 0)
-    const pull = layout.coreBias * (website.importance / 100)
+    const pull = layout.coreBias * importanceFor(website)
     let best: Vec3 | null = null
     let bestClearance = -Infinity
 

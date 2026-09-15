@@ -47,8 +47,35 @@ Websites now live inside their universe as celestial objects:
   bodies, layout profiles (dense AI, sparse Cybersecurity, calm Education, …)
 - exploration modes in the store: `galaxy` → `universe` → `website`
 
-Still no backend, database, search, auth, external navigation or full
-information panel.
+## Phase 3 — Interactive exploration & website experience
+
+The environment is now fully explorable, as one continuous space:
+
+- **view modes** `galaxy → universe → website` (navigation state only — the
+  data stays flat) with cinematic camera flights between them; closing a
+  website restores the exact pose the user had before focusing it
+- **website info panel** (`WebsiteInfoPanel`): monogram/logo, name, universe,
+  description, type, tags, prominence bar, *Visit Website* (new tab, with
+  feedback) and *Back*; every field degrades gracefully when data is missing
+- **location indicator** `WEBGALAXY / AI / CHATGPT` (clickable segments),
+  **universe info** card (name, description, websites discovered), contextual
+  **interaction hints** per view that step aside once the user is active
+- **selection language**: hover ring hint + label; focused websites get a
+  tilted orbital ring with travelling motes, stronger glow, calmer motion and
+  a finer close-up sphere (`detail` LOD); a selected universe brightens and
+  swells until the camera is inside, other universes recede but stay present
+- **interaction layer** (`interaction/GalaxyInteraction.tsx`,
+  `utils/interaction.ts`): only tagged hit volumes carry handlers (particles
+  are never raycast); overlapping hits are re-ranked selected website →
+  website → universe. A typed `interactionEvents` bus emits hover / select /
+  visit / back / camera-travel events for a future audio layer.
+- **input**: mouse, drag, scroll, tap, drag, pinch; Esc steps back a level;
+  buttons have visible focus rings
+- **reduced motion** (`prefers-reduced-motion`): faster intro, sub-second
+  flights without arcs, calmer orbits/dust, no idle drift or parallax,
+  near-instant UI transitions
+
+Still no search, filtering, backend, auth, submissions or admin.
 
 ## Stack
 
@@ -74,28 +101,34 @@ src/
       UniverseField.tsx      places every universe (flat list — no nesting)
       universe/
         Universe.tsx         one universe: structure, hover/active/dim, label
+        UniverseContents.tsx websites + environment (unscaled world space)
         UniverseWebsites.tsx places + animates the universe's websites
         UniverseEnvironment.tsx  dust and background bodies
       celestial/
         CelestialObject.tsx  orbit, visibility/LOD, hover/focus easing, label
         StarWebsite.tsx  PlanetWebsite.tsx  MoonWebsite.tsx  CometWebsite.tsx  CometTrail.tsx
-        ObjectGlow.tsx  GlyphSprite.tsx  celestialFrame.ts
+        SelectionRing.tsx  ObjectGlow.tsx  GlyphSprite.tsx  celestialFrame.ts
       interaction/
-        UniverseInteraction.tsx  WebsiteInteraction.tsx   pointer handling
-      CameraController.tsx   GSAP intro + exploration flights + damped OrbitControls
+        GalaxyInteraction.tsx    scene-wide hit ranking + motion preference
+        UniverseInteraction.tsx  WebsiteInteraction.tsx   tagged hit volumes
+      camera/
+        CameraController.tsx GSAP intro, damped OrbitControls, focus follow
+        CameraTransition.tsx flights between view modes (restores previous pose on close)
       PointerTracker.tsx     smoothed pointer for parallax
       Effects.tsx            bloom + vignette (lazy-loaded, skipped on low tier)
       DevBridge.tsx          dev-only window hooks for tests (`window.__webgalaxy`)
       visuals/               particle cloud, glow sprites, orbiting bodies
       shaders/               shared GLSL
     ui/
-      GalaxyTitle.tsx  Navigation.tsx  UniverseLabel.tsx  WebsiteLabel.tsx
-      ExplorationContext.tsx  WebsitePlaceholder.tsx  InteractionHint.tsx  IntroSkip.tsx
+      GalaxyTitle.tsx  GalaxyNavigation.tsx  UniverseLabel.tsx  WebsiteLabel.tsx
+      LocationIndicator.tsx  UniverseInfo.tsx  WebsiteInfoPanel.tsx  InteractionHints.tsx  IntroSkip.tsx
   data/
     universes.ts             universe definitions (position, scale, visual type, palette, layout)
     websites.ts              website definitions (universeId, objectType, importance, accent, glyph)
   utils/
-    celestial.ts             sizes, fade distances, procedural textures
+    camera.ts                overview / approach / view-distance / flight timing math
+    interaction.ts           interaction event bus + hit ranking
+    celestial.ts             sizes, fade distances, metadata fallbacks, procedural textures
     generatePositions.ts     best-candidate placement with clearance
     generateOrbits.ts        drift / moon / comet orbits + evaluator
   lib/
@@ -108,7 +141,7 @@ src/
     useQualityProfile.ts     device tier → render budget
     useParallax.ts           camera-space pointer parallax for a group
     useExplorationKeys.ts    Esc steps back a level
-  store/galaxyStore.ts       Zustand: hovered/active/selected ids, exploration mode, camera target
+  store/galaxyStore.ts       Zustand: view mode, hovered/active/selected ids, camera target, previous pose, transitioning
   types/galaxy.ts            domain types
   styles/index.css           Tailwind + theme tokens
 ```

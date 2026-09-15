@@ -10,6 +10,7 @@ declare global {
       store: typeof useGalaxyStore
       /** Screen position (CSS px) of a registered universe or website, or null. */
       project: (id: string) => { x: number; y: number; distance: number } | null
+      camera: () => { position: [number, number, number] }
     }
   }
 }
@@ -22,6 +23,10 @@ export function DevBridge() {
   useEffect(() => {
     window.__webgalaxy = {
       store: useGalaxyStore,
+      camera: () => {
+        const { camera } = get()
+        return { position: [camera.position.x, camera.position.y, camera.position.z] }
+      },
       project: (id) => {
         const object = celestialRegistry.get(id)
         if (!object) return null

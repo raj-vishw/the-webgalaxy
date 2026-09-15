@@ -1,7 +1,8 @@
 import { useCursor } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Mesh } from 'three'
+import { tagInteraction } from '../../../utils/interaction'
 import { useGalaxyStore } from '../../../store/galaxyStore'
 import type { UniverseDefinition } from '../../../types/galaxy'
 
@@ -24,9 +25,14 @@ interface UniverseInteractionProps {
  * raycast). Hovering highlights the structure; clicking travels into it.
  */
 export function UniverseInteraction({ definition, enabled, onHoverChange }: UniverseInteractionProps) {
+  const meshRef = useRef<Mesh>(null)
   const [hovered, setHovered] = useState(false)
   const setHoveredUniverse = useGalaxyStore((s) => s.setHoveredUniverse)
   const enterUniverse = useGalaxyStore((s) => s.enterUniverse)
+
+  useEffect(() => {
+    if (meshRef.current) tagInteraction(meshRef.current, { kind: 'universe', id: definition.id })
+  }, [definition.id])
 
   useCursor(hovered && enabled)
 
@@ -60,6 +66,7 @@ export function UniverseInteraction({ definition, enabled, onHoverChange }: Univ
 
   return (
     <mesh
+      ref={meshRef}
       onPointerOver={onPointerOver}
       onPointerOut={onPointerOut}
       onClick={onClick}

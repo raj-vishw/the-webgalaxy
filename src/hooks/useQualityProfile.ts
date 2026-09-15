@@ -21,9 +21,11 @@ export interface QualityProfile {
   dustDetail: number
   /** Camera distance beyond which website objects collapse to a glow point. */
   lodDistance: number
+  /** `prefers-reduced-motion`: shorter flights, calmer orbits, no idle drift. */
+  reducedMotion: boolean
 }
 
-const PROFILES: Record<QualityTier, Omit<QualityProfile, 'tier' | 'coarsePointer'>> = {
+const PROFILES: Record<QualityTier, Omit<QualityProfile, 'tier' | 'coarsePointer' | 'reducedMotion'>> = {
   high: {
     stars: { far: 14000, mid: 5000, near: 1400 }, universeDetail: 1, maxDpr: 2, postProcessing: true,
     planetSegments: 40, atmosphere: true, dustDetail: 1, lodDistance: 60,
@@ -55,6 +57,7 @@ export function useQualityProfile(): QualityProfile {
   return useMemo(() => {
     const tier = detectTier()
     const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches ?? false
-    return { tier, coarsePointer, ...PROFILES[tier] }
+    const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    return { tier, coarsePointer, reducedMotion, ...PROFILES[tier] }
   }, [])
 }

@@ -9,15 +9,47 @@ const BASE_SIZE: Record<CelestialObjectType, number> = {
   comet: 0.3,
 }
 
+const DEFAULT_IMPORTANCE = 50
+const DEFAULT_ACCENT = '#c9d4ff'
+
+/** Importance clamped to 0–1, defaulting when the data omits it. */
+export function importanceFor(website: WebsiteDefinition): number {
+  const raw = typeof website.importance === 'number' && Number.isFinite(website.importance) ? website.importance : DEFAULT_IMPORTANCE
+  return Math.min(1, Math.max(0, raw / 100))
+}
+
+/** Accent colour with a neutral fallback for sites without brand data. */
+export function accentFor(website: WebsiteDefinition): string {
+  return website.accent && /^#[0-9a-f]{3,8}$/i.test(website.accent) ? website.accent : DEFAULT_ACCENT
+}
+
+/** Monogram: explicit glyph, else the initials of the name (max 3). */
+export function glyphFor(website: WebsiteDefinition): string {
+  if (website.glyph?.trim()) return website.glyph.trim().slice(0, 4)
+  const words = website.name.trim().split(/\s+/).filter(Boolean)
+  const initials = words.length > 1 ? words.map((w) => w[0]).join('') : website.name.slice(0, 2)
+  return (initials || '·').slice(0, 3)
+}
+
+/** Whether the site has a URL we can actually open. */
+export function urlFor(website: WebsiteDefinition): string | null {
+  try {
+    if (!website.url) return null
+    const parsed = new URL(website.url)
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:' ? parsed.href : null
+  } catch {
+    return null
+  }
+}
+
 /** Importance-driven size. Deliberately compressed so small sites stay findable. */
 export function sizeFor(website: WebsiteDefinition): number {
-  const importance = website.importance / 100
-  return BASE_SIZE[website.objectType] * (0.72 + 0.58 * importance) * (website.size ?? 1)
+  return BASE_SIZE[website.objectType] * (0.72 + 0.58 * importanceFor(website)) * (website.size ?? 1)
 }
 
 /** Glow strength (0–1-ish) driven by importance. */
 export function glowFor(website: WebsiteDefinition): number {
-  return 0.55 + 0.45 * (website.importance / 100)
+  return 0.55 + 0.45 * importanceFor(website)
 }
 
 /**
@@ -26,7 +58,7 @@ export function glowFor(website: WebsiteDefinition): number {
  * stars first as you approach, then planets, then the small things.
  */
 export function fadeDistancesFor(website: WebsiteDefinition, universe: UniverseDefinition) {
-  const importance = website.importance / 100
+  const importance = importanceFor(website)
   const far = universe.scale * (4.5 + 3.5 * importance)
   return { near: far - universe.scale * 1.5, far }
 }
@@ -166,7 +198,8 @@ const paletteColor = new Color()
 export function createSurfaceTexture(website: WebsiteDefinition, muted = false): CanvasTexture {
   const variant = variantFor(website)
   const pattern = surfacePattern(variant)
-  new Color(website.accent).getHSL(hsl)
+  const glyph = glyphFor(website)
+  new Color(accentFor(website)).getHSL(hsl)
   const saturation = muted ? hsl.s * 0.3 : Math.min(0.62, hsl.s * 0.65)
   const lightnessMin = muted ? 0.12 : 0.14
   const lightnessMax = muted ? 0.5 : 0.58
@@ -199,13 +232,13 @@ export function createSurfaceTexture(website: WebsiteDefinition, muted = false):
   ctx.textBaseline = 'middle'
   ctx.globalAlpha = muted ? 0.28 : 0.42
   ctx.fillStyle = '#ffffff'
-  const width = ctx.measureText(website.glyph).width
+  const width = ctx.measureText(glyph).width
   const glyphScale = Math.min(1, 52 / width)
   for (const u of [0.25, 0.75]) {
     ctx.save()
     ctx.translate(u * SURFACE_W, SURFACE_H / 2)
     ctx.scale(glyphScale, glyphScale)
-    ctx.fillText(website.glyph, 0, 1)
+    ctx.fillText(glyph, 0, 1)
     ctx.restore()
   }
 
