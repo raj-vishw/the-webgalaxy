@@ -28,6 +28,12 @@ export const sceneMotion = {
   },
   /** Active filters: websites not in the set recede and stop responding. */
   filter: { active: false, websiteIds: new Set<string>() },
+  /**
+   * Websites at the far end of the connections currently drawn. They keep a
+   * minimum presence (even across the galaxy) so a line never points at
+   * nothing. Milder than `emphasis`; the two combine.
+   */
+  relations: { active: false, websiteIds: new Set<string>() },
   /** Camera pose sampled each frame for the minimap (top-down x/z and heading). */
   camera: { x: 0, z: 0, headingX: 0, headingZ: -1 },
   /**

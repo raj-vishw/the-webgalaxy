@@ -1,12 +1,14 @@
 import type { UniverseDefinition, WebsiteDefinition } from '../types/galaxy'
 import { importanceFor } from './celestial'
-import { matchesFilters, type WebsiteFilters } from './filtering'
+import { matchesFilters, type FilterContext, type WebsiteFilters } from './filtering'
 
 export interface WebsiteMatch {
   kind: 'website'
   website: WebsiteDefinition
   universe: UniverseDefinition | undefined
   score: number
+  /** Why an indirect result (related / alternative) appears. */
+  reason?: string
 }
 
 export interface UniverseMatch {
@@ -66,6 +68,7 @@ export function searchGalaxy(
   universes: UniverseDefinition[],
   filters?: WebsiteFilters,
   limit = 12,
+  filterContext?: FilterContext,
 ): SearchResults {
   const tokens = tokenize(query)
   if (tokens.length === 0) return { websites: [], universes: [] }
@@ -74,7 +77,7 @@ export function searchGalaxy(
 
   const websiteMatches: WebsiteMatch[] = []
   for (const website of websites) {
-    if (filters && !matchesFilters(website, filters)) continue
+    if (filters && !matchesFilters(website, filters, filterContext)) continue
     const universe = universeById.get(website.universeId)
     let score = 0
     let complete = true

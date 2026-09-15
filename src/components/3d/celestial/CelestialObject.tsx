@@ -5,6 +5,7 @@ import { Group, MathUtils, PerspectiveCamera, Vector3 } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import { celestialRegistry } from '../../../lib/celestialRegistry'
 import { sceneMotion } from '../../../lib/sceneMotion'
+import { isEmerging, isTrending } from '../../../services/recommendationService'
 import { useGalaxyStore } from '../../../store/galaxyStore'
 import type { UniverseDefinition, WebsiteDefinition } from '../../../types/galaxy'
 import { ENTRY_REVEAL_WINDOW, accentFor, fadeDistancesFor, sizeFor } from '../../../utils/celestial'
@@ -18,6 +19,7 @@ import { MoonWebsite } from './MoonWebsite'
 import { PlanetWebsite } from './PlanetWebsite'
 import { SelectionRing } from './SelectionRing'
 import { StarWebsite } from './StarWebsite'
+import { TrendMarker } from './TrendMarker'
 
 interface CelestialObjectProps {
   website: WebsiteDefinition
@@ -52,6 +54,11 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
   const dimmed = useGalaxyStore(
     (s) => s.selectedWebsiteId !== null && s.selectedWebsiteId !== website.id && s.activeUniverseId === universe.id,
   )
+  // At the far end of a drawn connection: named, so the line reads as "GitHub — GitLab".
+  const linked = useGalaxyStore(
+    (s) => s.selectedWebsiteId !== website.id && s.visibleRelationships.some((r) => r.sourceId === website.id || r.targetId === website.id),
+  )
+  const trend = isTrending(website.id) ? 'trending' : isEmerging(website.id) ? 'emerging' : null
 
   const size = sizeFor(website)
   const { near, far } = fadeDistancesFor(website, universe)
@@ -84,25 +91,31 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
     const distance = root.getWorldPosition(worldPosition).distanceTo(camera.position)
     f.distance = distance
     f.size = size
+    // Search / discovery / travel emphasis and filters are read straight from
+    // the shared motion state so they cost no React renders.
+    const { emphasis, filter, relations } = sceneMotion
+    const emphasized = emphasis.active && emphasis.websiteIds.has(website.id)
+    const connected = relations.active && relations.websiteIds.has(website.id)
+    const filteredOut = filter.active && !filter.websiteIds.has(website.id)
+
+    // The staggered entry reveal never hides what the explorer is heading
+    // for: the focused, emphasised or connected object is present at once.
     const entry = sceneMotion.universeEntry[universe.id] ?? 1
-    const entryReveal = MathUtils.smoothstep(entry, revealStart, revealEnd)
+    const entryReveal = selected || emphasized || connected ? 1 : MathUtils.smoothstep(entry, revealStart, revealEnd)
     f.visibility = (1 - MathUtils.smoothstep(distance, near, far)) * entryReveal
     // Hysteresis so objects don't flicker between detail levels at the boundary.
     const lodDistance = profile.lodDistance * (f.lod === 'point' ? 1 : 1.15)
     const detailDistance = size * DETAIL_FACTOR * (f.lod === 'detail' ? 1.15 : 1)
     f.lod = distance < detailDistance ? 'detail' : distance < lodDistance ? 'full' : 'point'
 
-    // Search / discovery / travel emphasis and filters are read straight from
-    // the shared motion state so they cost no React renders.
-    const { emphasis, filter } = sceneMotion
-    const emphasized = emphasis.active && emphasis.websiteIds.has(website.id)
-    const filteredOut = filter.active && !filter.websiteIds.has(website.id)
     if (emphasized) f.visibility = Math.max(f.visibility, entryReveal * 0.85)
     else if (emphasis.active) f.visibility *= 1 - emphasis.dimOthers
+    // Far ends of connections stay present even from across the galaxy.
+    if (connected) f.visibility = Math.max(f.visibility, entryReveal * 0.6)
     if (filteredOut) f.visibility *= 0.15
 
     const k = 1 - Math.exp(-delta * 6)
-    f.hover += (Math.max(hovered ? 1 : 0, emphasized ? 0.7 : 0) - f.hover) * k
+    f.hover += (Math.max(hovered ? 1 : 0, emphasized ? 0.7 : 0, connected && !selected ? 0.3 : 0) - f.hover) * k
     f.focus += ((selected ? 1 : 0) - f.focus) * k
     f.dim += ((dimmed ? 1 : 0) - f.dim) * k * 0.6
 
@@ -116,11 +129,11 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
       const pxPerUnit = viewport.height / 2 / (distance * Math.tan(fov / 2))
       const extent = website.objectType === 'star' ? size * 2.2 : size * 1.25
       label.style.transform = `translateY(${(extent * pxPerUnit + LABEL_GAP_PX).toFixed(1)}px)`
-      label.style.opacity = String(f.visibility)
+      label.style.opacity = String(f.visibility * (hovered || selected ? 1 : 0.7))
     }
   }, -1)
 
-  const showLabel = hovered || selected
+  const showLabel = hovered || selected || linked
 
   return (
     <>
@@ -141,11 +154,14 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
             radius={RING_RADIUS[website.objectType]}
             reducedMotion={profile.reducedMotion}
           />
+          {trend && profile.tier !== 'low' && (
+            <TrendMarker kind={trend} websiteId={website.id} frame={frameRef} color={accentFor(website)} reducedMotion={profile.reducedMotion} />
+          )}
         </group>
         {showLabel && (
           <Html center zIndexRange={[6, 0]} style={{ pointerEvents: 'none' }}>
             <div ref={labelRef} style={{ opacity: 0 }}>
-              <WebsiteLabel name={website.name} selected={selected} />
+              <WebsiteLabel name={website.name} selected={selected} muted={linked && !hovered && !selected} />
             </div>
           </Html>
         )}

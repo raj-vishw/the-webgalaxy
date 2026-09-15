@@ -13,6 +13,8 @@ export type InteractionEvent =
   | { type: 'website:visit'; websiteId: string }
   | { type: 'navigate:back'; to: 'universe' | 'galaxy' }
   | { type: 'camera:travel'; phase: 'start' | 'end' }
+  /** The explorer followed a connection or a suggestion from one website to another. */
+  | { type: 'relationship:follow'; fromId: string | null; toId: string }
 
 type Listener = (event: InteractionEvent) => void
 

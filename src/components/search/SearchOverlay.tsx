@@ -2,10 +2,13 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { featuredWebsiteIds, searchSuggestions } from '../../data/featured'
 import { universes } from '../../data/universes'
 import { websites } from '../../data/websites'
+import { discoveryFilterContext, expandSearch } from '../../services/discoveryService'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { accentFor } from '../../utils/celestial'
 import { galaxyNavigation } from '../../utils/navigation'
 import { searchGalaxy, type SearchMatch } from '../../utils/search'
+import { EmergingWebsites } from '../discovery/EmergingWebsites'
+import { TrendingWebsites } from '../discovery/TrendingWebsites'
 import { eyebrow, focusRing, glassPanel } from '../ui/panel'
 import { CelestialIcon } from './CelestialIcon'
 import { SearchInput } from './SearchInput'
@@ -21,13 +24,23 @@ export function SearchOverlay() {
   const query = useGalaxyStore((s) => s.searchQuery)
   const filters = useGalaxyStore((s) => s.filters)
   const setSearchQuery = useGalaxyStore((s) => s.setSearchQuery)
+  const recordSearch = useGalaxyStore((s) => s.recordSearch)
   const closeOverlay = useGalaxyStore((s) => s.closeOverlay)
+  const selectedWebsiteId = useGalaxyStore((s) => s.selectedWebsiteId)
   const inputRef = useRef<HTMLInputElement>(null)
   const listboxId = useId()
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const results = useMemo(() => searchGalaxy(query, websites, universes, filters), [query, filters])
-  const flat = useMemo<SearchMatch[]>(() => [...results.universes, ...results.websites], [results])
+  const results = useMemo(() => {
+    const context = filters.discovery ? discoveryFilterContext(selectedWebsiteId) : undefined
+    return searchGalaxy(query, websites, universes, filters, 12, context)
+  }, [query, filters, selectedWebsiteId])
+  // What the top match connects to, shown after the direct results.
+  const expansion = useMemo(() => expandSearch(results, query), [results, query])
+  const flat = useMemo<SearchMatch[]>(
+    () => [...results.universes, ...results.websites, ...expansion.related, ...expansion.alternatives],
+    [results, expansion],
+  )
   const hasQuery = query.trim().length > 0
 
   useEffect(() => {
@@ -46,6 +59,8 @@ export function SearchOverlay() {
   }
 
   const choose = (match: SearchMatch) => {
+    // A search that led somewhere is a session signal for later suggestions.
+    recordSearch(query)
     closeOverlay()
     setSearchQuery('')
     if (match.kind === 'website') galaxyNavigation.focusWebsite(match.website.id)
@@ -110,6 +125,7 @@ export function SearchOverlay() {
           {hasQuery ? (
             <SearchResults
               results={results}
+              expansion={expansion}
               flat={flat}
               listboxId={listboxId}
               activeIndex={activeIndex}
@@ -119,7 +135,7 @@ export function SearchOverlay() {
               onClear={() => setSearchQuery('')}
             />
           ) : (
-            <div className="grid gap-4 px-3 pt-1 pb-4 sm:grid-cols-[1.1fr_1fr]">
+            <div className="grid max-h-[60vh] gap-4 overflow-y-auto overscroll-contain px-3 pt-1 pb-4 sm:grid-cols-[1.1fr_1fr]">
               <div>
                 <p className={`${eyebrow} pb-2`}>Universes</p>
                 <ul className="flex flex-wrap gap-1.5">
@@ -152,11 +168,9 @@ export function SearchOverlay() {
                     </li>
                   ))}
                 </ul>
-              </div>
-              <div>
-                <p className={`${eyebrow} pb-1`}>✦ Featured in the WebGalaxy</p>
+                <p className={`${eyebrow} pt-4 pb-1`}>✦ Featured in the WebGalaxy</p>
                 <ul>
-                  {featured.map((w) => {
+                  {featured.slice(0, 3).map((w) => {
                     const universe = universes.find((u) => u.id === w.universeId)
                     return (
                       <li key={w.id}>
@@ -180,6 +194,10 @@ export function SearchOverlay() {
                     )
                   })}
                 </ul>
+              </div>
+              <div className="grid content-start gap-3">
+                <TrendingWebsites limit={4} onChoose={closeOverlay} />
+                <EmergingWebsites limit={3} onChoose={closeOverlay} />
               </div>
             </div>
           )}

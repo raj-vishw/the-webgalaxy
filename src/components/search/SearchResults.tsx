@@ -1,9 +1,11 @@
+import type { SearchExpansion } from '../../services/discoveryService'
 import type { SearchMatch, SearchResults as Results } from '../../utils/search'
 import { eyebrow, ghostButton } from '../ui/panel'
 import { SearchResult } from './SearchResult'
 
 interface SearchResultsProps {
   results: Results
+  expansion: SearchExpansion
   flat: SearchMatch[]
   listboxId: string
   activeIndex: number
@@ -13,7 +15,7 @@ interface SearchResultsProps {
   onClear: () => void
 }
 
-export function SearchResults({ results, flat, listboxId, activeIndex, optionId, onSelect, onHover, onClear }: SearchResultsProps) {
+export function SearchResults({ results, expansion, flat, listboxId, activeIndex, optionId, onSelect, onHover, onClear }: SearchResultsProps) {
   if (flat.length === 0) {
     return (
       <div className="px-3 py-8 text-center">
@@ -27,16 +29,16 @@ export function SearchResults({ results, flat, listboxId, activeIndex, optionId,
   }
 
   let index = 0
-  const section = (title: string, matches: SearchMatch[]) =>
+  const section = (title: string, matches: SearchMatch[], keyPrefix = '') =>
     matches.length ? (
-      <li key={title}>
+      <li key={keyPrefix + title}>
         <p className={`${eyebrow} px-3 pt-3 pb-1`}>{title}</p>
         <ul role="presentation">
           {matches.map((match) => {
             const i = index++
             return (
               <SearchResult
-                key={match.kind === 'website' ? match.website.id : `u-${match.universe.id}`}
+                key={keyPrefix + (match.kind === 'website' ? match.website.id : `u-${match.universe.id}`)}
                 match={match}
                 id={optionId(i)}
                 active={i === activeIndex}
@@ -52,7 +54,9 @@ export function SearchResults({ results, flat, listboxId, activeIndex, optionId,
   return (
     <ul id={listboxId} role="listbox" aria-label="Search results" className="max-h-[52vh] overflow-y-auto pb-2">
       {section('Universes', results.universes)}
-      {section('Websites', results.websites)}
+      {section(expansion.anchor ? 'Direct match' : 'Websites', results.websites)}
+      {expansion.anchor && section(`Related to ${expansion.anchor.name}`, expansion.related, 'r-')}
+      {expansion.anchor && section(`Alternatives to ${expansion.anchor.name}`, expansion.alternatives, 'a-')}
     </ul>
   )
 }

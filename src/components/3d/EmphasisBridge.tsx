@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { universes } from '../../data/universes'
 import { websites } from '../../data/websites'
 import { sceneMotion } from '../../lib/sceneMotion'
+import { discoveryFilterContext } from '../../services/discoveryService'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { applyFilters, hasActiveFilters } from '../../utils/filtering'
 import { searchGalaxy } from '../../utils/search'
@@ -16,7 +17,7 @@ export function EmphasisBridge() {
     let debounce = 0
 
     const apply = () => {
-      const { overlay, searchQuery, filters, discovery, isTransitioning, viewMode, selectedWebsiteId } =
+      const { overlay, searchQuery, filters, discovery, isTransitioning, viewMode, selectedWebsiteId, highlight, visibleRelationships } =
         useGalaxyStore.getState()
       const emphasis = sceneMotion.emphasis
       const websiteIds = new Set<string>()
@@ -28,16 +29,26 @@ export function EmphasisBridge() {
         // The galaxy "searching itself": the current candidate lights up.
         const id = discovery.phase === 'scanning' ? discovery.candidateId : discovery.targetId
         if (id) {
-          if (discovery.mode === 'website') {
+          if (discovery.mode === 'universe') {
+            universeIds.add(id)
+          } else {
             websiteIds.add(id)
             const site = websites.find((w) => w.id === id)
             if (site) universeIds.add(site.universeId)
-          } else {
-            universeIds.add(id)
           }
         }
         active = true
         dimOthers = 0.55
+      } else if (highlight && highlight.items.length) {
+        // Explore Similar / Find Alternatives / Works With: the set lights up
+        // around the focused website, which stays lit itself.
+        websiteIds.add(highlight.sourceId)
+        for (const item of highlight.items) {
+          websiteIds.add(item.website.id)
+          universeIds.add(item.website.universeId)
+        }
+        active = true
+        dimOthers = 0.45
       } else if (isTransitioning && viewMode === 'website' && selectedWebsiteId) {
         // Travelling to a result: the destination stays lit the whole way.
         websiteIds.add(selectedWebsiteId)
@@ -46,7 +57,7 @@ export function EmphasisBridge() {
         active = true
         dimOthers = 0.4
       } else if (overlay === 'search' && searchQuery.trim()) {
-        const results = searchGalaxy(searchQuery, websites, universes, filters)
+        const results = searchGalaxy(searchQuery, websites, universes, filters, 12, filters.discovery ? discoveryFilterContext(selectedWebsiteId) : undefined)
         for (const match of results.websites) {
           websiteIds.add(match.website.id)
           universeIds.add(match.website.universeId)
@@ -61,9 +72,19 @@ export function EmphasisBridge() {
       emphasis.active = active
       emphasis.dimOthers = dimOthers
 
+      // Far ends of the drawn connections keep a minimum presence.
+      const relationIds = new Set<string>()
+      for (const r of visibleRelationships) {
+        relationIds.add(r.sourceId)
+        relationIds.add(r.targetId)
+      }
+      sceneMotion.relations.websiteIds = relationIds
+      sceneMotion.relations.active = relationIds.size > 0
+
       const filterActive = hasActiveFilters(filters)
       sceneMotion.filter.active = filterActive
-      sceneMotion.filter.websiteIds = filterActive ? new Set(applyFilters(websites, filters).map((w) => w.id)) : new Set()
+      const context = filters.discovery ? discoveryFilterContext(selectedWebsiteId) : undefined
+      sceneMotion.filter.websiteIds = filterActive ? new Set(applyFilters(websites, filters, context).map((w) => w.id)) : new Set()
     }
 
     apply()
@@ -80,7 +101,9 @@ export function EmphasisBridge() {
         state.discovery !== previous.discovery ||
         state.isTransitioning !== previous.isTransitioning ||
         state.viewMode !== previous.viewMode ||
-        state.selectedWebsiteId !== previous.selectedWebsiteId
+        state.selectedWebsiteId !== previous.selectedWebsiteId ||
+        state.highlight !== previous.highlight ||
+        state.visibleRelationships !== previous.visibleRelationships
       ) {
         apply()
       }
@@ -90,6 +113,7 @@ export function EmphasisBridge() {
       unsubscribe()
       sceneMotion.emphasis.active = false
       sceneMotion.filter.active = false
+      sceneMotion.relations.active = false
     }
   }, [])
 

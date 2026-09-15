@@ -28,6 +28,8 @@ export function GalaxyMinimap() {
   const introDone = useGalaxyStore((s) => s.introPhase === 'complete')
   const activeUniverseId = useGalaxyStore((s) => s.activeUniverseId)
   const selectedWebsiteId = useGalaxyStore((s) => s.selectedWebsiteId)
+  // The info panel owns the right edge while a website is focused; the map steps aside.
+  const aside = useGalaxyStore((s) => s.viewMode === 'website')
   const [cam, setCam] = useState(() => ({ ...sceneMotion.camera }))
 
   // A few samples per second is plenty for a map; no per-frame React work.
@@ -46,7 +48,13 @@ export function GalaxyMinimap() {
   if (!introDone) return null
 
   return (
-    <div className="absolute right-6 bottom-6 z-10 flex flex-col items-end gap-2 sm:right-9 sm:bottom-8">
+    <div
+      className={[
+        'absolute right-6 bottom-6 z-10 flex flex-col items-end gap-2 transition-opacity duration-500 sm:right-9 sm:bottom-8',
+        aside ? 'pointer-events-none opacity-0' : 'opacity-100',
+      ].join(' ')}
+      aria-hidden={aside}
+    >
       <div
         aria-hidden={!visible}
         className={[

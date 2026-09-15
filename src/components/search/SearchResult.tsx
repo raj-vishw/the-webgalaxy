@@ -19,7 +19,7 @@ export function SearchResult({ match, id, active, onSelect, onHover }: SearchRes
   const meta = isWebsite
     ? [match.universe ? `${match.universe.name} Universe` : 'The WebGalaxy', TYPE_LABEL[match.website.objectType]].join(' · ')
     : 'Universe'
-  const description = isWebsite ? match.website.description : match.universe.description
+  const description = isWebsite ? (match.reason ?? match.website.description) : match.universe.description
 
   return (
     <li id={id} role="option" aria-selected={active}>

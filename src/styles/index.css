@@ -44,13 +44,16 @@ canvas {
   animation: label-enter 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
-button {
-  font: inherit;
-  color: inherit;
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
+/* In the base layer so utility classes (borders, padding, sizes) still win. */
+@layer base {
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

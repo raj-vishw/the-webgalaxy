@@ -8,6 +8,8 @@ import { DevBridge } from './DevBridge'
 import { EmphasisBridge } from './EmphasisBridge'
 import { GalaxyInteraction } from './interaction/GalaxyInteraction'
 import { PointerTracker } from './PointerTracker'
+import { DiscoveryPath } from './relationships/DiscoveryPath'
+import { RelationshipGraph } from './relationships/RelationshipGraph'
 import { StarField } from './StarField'
 import { UniverseField } from './UniverseField'
 
@@ -41,6 +43,9 @@ export function WebGalaxyScene() {
       <BackgroundNebula />
       <StarField profile={profile} pixelRatio={pixelRatio} />
       <UniverseField profile={profile} pixelRatio={pixelRatio} />
+      {/* Connections and the explorer's trail: only what is relevant right now is drawn. */}
+      <RelationshipGraph pixelRatio={pixelRatio} reducedMotion={profile.reducedMotion} />
+      <DiscoveryPath pixelRatio={pixelRatio} reducedMotion={profile.reducedMotion} />
       {profile.postProcessing && (
         <Suspense fallback={null}>
           <Effects />

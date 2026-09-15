@@ -1,6 +1,7 @@
 import { universes } from '../data/universes'
 import { websites } from '../data/websites'
 import { useGalaxyStore } from '../store/galaxyStore'
+import { interactionEvents } from './interaction'
 
 /**
  * Reusable camera-targeting API. Every entry point — 3D clicks, search,
@@ -24,6 +25,17 @@ export const galaxyNavigation = {
   },
   returnToUniverse() {
     useGalaxyStore.getState().clearWebsite()
+  },
+  /**
+   * Travel along a connection or a suggestion to another website. The same
+   * flight as any other focus — through the destination's universe when it
+   * lies elsewhere — but recorded as a step on the explorer's path.
+   */
+  followRelationship(websiteId: string) {
+    const fromId = useGalaxyStore.getState().selectedWebsiteId
+    const ok = galaxyNavigation.focusWebsite(websiteId)
+    if (ok) interactionEvents.emit({ type: 'relationship:follow', fromId, toId: websiteId })
+    return ok
   },
 }
 

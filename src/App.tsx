@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { WebGalaxyScene } from './components/3d/WebGalaxyScene'
 import { DiscoveryAnimation } from './components/discovery/DiscoveryAnimation'
-import { DiscoveryButton } from './components/discovery/DiscoveryButton'
+import { DiscoveryMenu } from './components/discovery/DiscoveryMenu'
 import { FilterPanel } from './components/filters/FilterPanel'
 import { GalaxyMinimap } from './components/navigation/GalaxyMinimap'
 import { LocationIndicator } from './components/navigation/LocationIndicator'
@@ -41,7 +41,7 @@ export default function App() {
       <InteractionHints />
       <GalaxyMinimap />
       <UniverseNavigator />
-      <DiscoveryButton />
+      <DiscoveryMenu />
       <FilterPanel />
       <SearchOverlay />
       <DiscoveryAnimation />

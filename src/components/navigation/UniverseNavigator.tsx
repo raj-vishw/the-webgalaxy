@@ -2,6 +2,7 @@ import { universes } from '../../data/universes'
 import { websitesInUniverse } from '../../data/websites'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { galaxyNavigation } from '../../utils/navigation'
+import { ExplorationHistory } from '../history/ExplorationHistory'
 import { eyebrow, focusRing, glassPanel } from '../ui/panel'
 
 /**
@@ -19,8 +20,9 @@ export function UniverseNavigator() {
       aria-hidden={!open}
       className={[
         glassPanel,
-        'absolute top-16 left-9 z-30 w-[220px] px-2 pt-3 pb-2',
-        'max-sm:inset-x-3 max-sm:top-auto max-sm:bottom-3 max-sm:w-auto',
+        'absolute top-16 left-9 z-30 w-[252px] px-2 pt-3 pb-2',
+        'max-h-[calc(100vh-6rem)] overflow-y-auto overscroll-contain',
+        'max-sm:inset-x-3 max-sm:top-auto max-sm:bottom-3 max-sm:max-h-[70vh] max-sm:w-auto',
         'transition-[opacity,transform] duration-300 ease-out',
         open ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 -translate-y-1',
       ].join(' ')}
@@ -51,6 +53,7 @@ export function UniverseNavigator() {
           )
         })}
       </ul>
+      <ExplorationHistory />
     </nav>
   )
 }

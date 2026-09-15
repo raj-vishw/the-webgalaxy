@@ -1,7 +1,10 @@
+import { useMemo } from 'react'
 import { websites } from '../../data/websites'
+import { discoveryFilterContext } from '../../services/discoveryService'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { applyFilters, hasActiveFilters } from '../../utils/filtering'
 import { eyebrow, focusRing, ghostButton, glassPanel } from '../ui/panel'
+import { DiscoveryFilter } from './DiscoveryFilter'
 import { ImportanceFilter } from './ImportanceFilter'
 import { ObjectTypeFilter } from './ObjectTypeFilter'
 import { UniverseFilter } from './UniverseFilter'
@@ -15,8 +18,13 @@ export function FilterPanel() {
   const filters = useGalaxyStore((s) => s.filters)
   const clearFilters = useGalaxyStore((s) => s.clearFilters)
   const closeOverlay = useGalaxyStore((s) => s.closeOverlay)
+  const selectedWebsiteId = useGalaxyStore((s) => s.selectedWebsiteId)
   const active = hasActiveFilters(filters)
-  const count = active ? applyFilters(websites, filters).length : websites.length
+  const count = useMemo(() => {
+    if (!active) return websites.length
+    const context = filters.discovery ? discoveryFilterContext(selectedWebsiteId) : undefined
+    return applyFilters(websites, filters, context).length
+  }, [active, filters, selectedWebsiteId])
 
   return (
     <section
@@ -46,6 +54,7 @@ export function FilterPanel() {
         <UniverseFilter />
         <ObjectTypeFilter />
         <ImportanceFilter />
+        <DiscoveryFilter />
       </div>
       <div className="mt-5 flex items-center justify-between gap-3">
         <p className="font-sans text-[11px] tracking-[0.12em] text-space-300/70" aria-live="polite">

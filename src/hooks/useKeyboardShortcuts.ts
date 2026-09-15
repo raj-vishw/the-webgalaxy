@@ -15,6 +15,9 @@ const isTyping = (target: EventTarget | null) => {
 export function useKeyboardShortcuts() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      // A focused control that already handled the key (e.g. Escape in the
+      // search box) must not also step the navigation back.
+      if (e.defaultPrevented) return
       const store = useGalaxyStore.getState()
       if (store.introPhase !== 'complete') return
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {

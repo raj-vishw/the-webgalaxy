@@ -90,6 +90,70 @@ export interface WebsiteDefinition {
   orbitAnchorId?: string
   /** Reserved for a real logo asset in a later phase. */
   logo?: string
+  /**
+   * Connections to other websites, declared inline. Merged with the shared
+   * relationship dataset by the relationship service. A relationship is a
+   * link between equals — never ownership, containment or rank.
+   */
+  relationships?: WebsiteRelationshipRef[]
+}
+
+/**
+ * Controlled vocabulary of relationship types. Every one of them connects two
+ * independent websites; none of them imply that one is above the other.
+ */
+export type RelationshipType =
+  | 'related' // solve similar or related problems
+  | 'alternative' // can be used instead of each other
+  | 'integration' // commonly used together
+  | 'ecosystem' // part of the same broader ecosystem
+  | 'complementary' // different functionality that works well together
+  | 'competitor' // serve similar markets
+  | 'same-company' // operated by the same organisation
+
+/** A relationship declared from one website's point of view. */
+export interface WebsiteRelationshipRef {
+  target: string
+  type: RelationshipType
+  /**
+   * Most relationships are symmetrical and are declared once. Set `directed`
+   * when the connection genuinely has a direction (e.g. "A publishes to B");
+   * only then does the visualisation show movement from source to target.
+   */
+  directed?: boolean
+  /** Short human-readable justification, surfaced as an explanation. */
+  note?: string
+}
+
+/** A relationship as stored in the shared dataset (`data/relationships.ts`). */
+export interface WebsiteRelationship extends WebsiteRelationshipRef {
+  source: string
+}
+
+export type TrendDirection = 'up' | 'steady' | 'down'
+
+/**
+ * Static demo trend record for a website. This is placeholder data shaped so
+ * a backend can replace it — it is NOT live traffic.
+ */
+export interface WebsiteTrend {
+  websiteId: string
+  /** 0–1: how strongly the site is trending right now. */
+  trendingScore: number
+  trendDirection: TrendDirection
+  /** Low prominence but high discovery potential. */
+  emerging?: boolean
+  /** ISO date the snapshot represents. */
+  asOf: string
+}
+
+/**
+ * Two universes whose websites are often useful to the same explorer. This is
+ * an affinity between peers — neither universe contains or ranks the other.
+ */
+export interface UniverseAffinity {
+  universeIds: readonly [string, string]
+  reason: string
 }
 
 export type IntroPhase = 'idle' | 'playing' | 'complete'

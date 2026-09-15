@@ -35,7 +35,7 @@ export const universes: UniverseDefinition[] = [
     visualType: 'cluster',
     palette: { core: '#eafcff', primary: '#6fd3e6', secondary: '#a9c8ff' },
     seed: 23,
-    layout: { spread: [1.0, 0.55, 0.9], coreBias: 0.15, energy: 0.7, dust: 0.5 },
+    layout: { spread: [1.18, 0.6, 1.0], coreBias: 0.15, energy: 0.7, dust: 0.5 },
   },
   {
     id: 'development',

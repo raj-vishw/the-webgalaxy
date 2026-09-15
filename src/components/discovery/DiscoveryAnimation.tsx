@@ -1,67 +1,79 @@
 import { useEffect, useState } from 'react'
 import { universes } from '../../data/universes'
 import { websites } from '../../data/websites'
+import { DISCOVERY_MODE_LABEL, discoveryPool, pickDiscoveryTarget } from '../../services/discoveryService'
 import { useGalaxyStore } from '../../store/galaxyStore'
-import { isDiscoverable, pickRandomUniverse, pickRandomWebsite, scanSequence } from '../../utils/discovery'
+import { scanSequence } from '../../utils/discovery'
 import { galaxyNavigation } from '../../utils/navigation'
 
 const FOUND_HOLD_MS = 1100
+const EMPTY_HOLD_MS = 1600
 
-function nameOf(mode: 'website' | 'universe', id: string | null): string {
+function nameOf(kind: 'website' | 'universe', id: string | null): string {
   if (!id) return ''
-  return mode === 'website' ? (websites.find((w) => w.id === id)?.name ?? '') : (universes.find((u) => u.id === id)?.name ?? '')
+  return kind === 'website' ? (websites.find((w) => w.id === id)?.name ?? '') : (universes.find((u) => u.id === id)?.name ?? '')
 }
 
 /**
  * "The galaxy is searching itself": candidates flash by, slow down and stop
- * on the destination; then the camera travels there. With reduced motion the
+ * on the destination; then the camera travels there. Every discovery mode
+ * shares this — only the pool and the pick differ. With reduced motion the
  * scan is skipped and the destination is simply announced.
  */
 export function DiscoveryAnimation() {
   const discovery = useGalaxyStore((s) => s.discovery)
-  const { phase, mode, targetId, candidateId } = discovery
+  const { phase, mode, targetId, candidateId, reason } = discovery
   const setDiscovery = useGalaxyStore((s) => s.setDiscovery)
   const endDiscovery = useGalaxyStore((s) => s.endDiscovery)
   const isTransitioning = useGalaxyStore((s) => s.isTransitioning)
   const [reduced] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
+  const kind = mode === 'universe' ? 'universe' : 'website'
 
-  // Scanning → found.
+  // Scanning → found (or → nothing to find).
   useEffect(() => {
     if (phase !== 'scanning') return
-    const { activeUniverseId, selectedWebsiteId } = useGalaxyStore.getState()
-    const target =
-      mode === 'website'
-        ? pickRandomWebsite(websites, selectedWebsiteId ?? undefined)?.id
-        : pickRandomUniverse(universes, activeUniverseId ?? undefined)?.id
+    const { recommendationContext } = useGalaxyStore.getState()
+    const target = pickDiscoveryTarget(mode, recommendationContext)
     if (!target) {
-      endDiscovery()
+      setDiscovery({ phase: 'found', candidateId: null, targetId: null, reason: null })
       return
     }
-    const pool = mode === 'website' ? websites.filter(isDiscoverable).map((w) => w.id) : universes.map((u) => u.id)
-    const sequence = reduced ? [{ id: target, delay: 0 }] : scanSequence(pool, target)
+    const pool = discoveryPool(mode, recommendationContext)
+    // Ranked modes have small pools; borrow the wider random pool for the scan.
+    const scanPool = pool.length >= 6 ? pool : discoveryPool('random', recommendationContext)
+    const sequence = reduced ? [{ id: target.id, delay: 0 }] : scanSequence(scanPool, target.id)
     const timers: number[] = []
     let elapsed = 0
     for (const step of sequence) {
       timers.push(window.setTimeout(() => setDiscovery({ candidateId: step.id }), elapsed))
       elapsed += step.delay
     }
-    timers.push(window.setTimeout(() => setDiscovery({ phase: 'found', candidateId: target, targetId: target }), elapsed + 120))
+    timers.push(
+      window.setTimeout(
+        () => setDiscovery({ phase: 'found', candidateId: target.id, targetId: target.id, reason: target.reason }),
+        elapsed + 120,
+      ),
+    )
     return () => timers.forEach((t) => window.clearTimeout(t))
-  }, [phase, mode, reduced, setDiscovery, endDiscovery])
+  }, [phase, mode, reduced, setDiscovery])
 
-  // Found → travel.
+  // Found → travel (or → idle when there was nothing to find).
   useEffect(() => {
-    if (phase !== 'found' || !targetId) return
+    if (phase !== 'found') return
+    if (!targetId) {
+      const timer = window.setTimeout(endDiscovery, EMPTY_HOLD_MS)
+      return () => window.clearTimeout(timer)
+    }
     const timer = window.setTimeout(
       () => {
         setDiscovery({ phase: 'travelling' })
-        if (mode === 'website') galaxyNavigation.focusWebsite(targetId)
+        if (kind === 'website') galaxyNavigation.followRelationship(targetId)
         else galaxyNavigation.focusUniverse(targetId)
       },
       reduced ? 400 : FOUND_HOLD_MS,
     )
     return () => window.clearTimeout(timer)
-  }, [phase, mode, targetId, reduced, setDiscovery])
+  }, [phase, kind, targetId, reduced, setDiscovery, endDiscovery])
 
   // Travel → idle once the camera has arrived.
   useEffect(() => {
@@ -71,7 +83,13 @@ export function DiscoveryAnimation() {
   }, [phase, isTransitioning, endDiscovery])
 
   const visible = phase === 'scanning' || phase === 'found'
-  const name = nameOf(mode, phase === 'found' ? targetId : candidateId)
+  const empty = phase === 'found' && !targetId
+  const name = nameOf(kind, phase === 'found' ? targetId : candidateId)
+  const eyebrowText = empty
+    ? `No ${DISCOVERY_MODE_LABEL[mode].toLowerCase()} websites charted here`
+    : phase === 'found'
+      ? 'Destination found'
+      : `Scanning the WebGalaxy · ${DISCOVERY_MODE_LABEL[mode]}`
 
   return (
     <div
@@ -84,9 +102,7 @@ export function DiscoveryAnimation() {
         visible ? 'opacity-100' : 'opacity-0',
       ].join(' ')}
     >
-      <p className="font-sans text-[11px] tracking-[0.3em] uppercase text-space-300/75">
-        {phase === 'found' ? 'Destination found' : 'Scanning the WebGalaxy'}
-      </p>
+      <p className="font-sans text-[11px] tracking-[0.3em] uppercase text-space-300/75">{eyebrowText}</p>
       <p
         className={[
           'mt-4 font-sans font-light uppercase text-white',
@@ -96,12 +112,15 @@ export function DiscoveryAnimation() {
         ].join(' ')}
         style={{ textShadow: '0 0 26px rgba(200,214,255,0.4)' }}
       >
-        {name || '·'}
+        {empty ? '—' : name || '·'}
+      </p>
+      <p className={`mt-3 h-4 font-sans text-[11px] tracking-[0.18em] text-space-300/70 transition-opacity duration-300 ${phase === 'found' && reason ? 'opacity-100' : 'opacity-0'}`}>
+        {reason ?? ''}
       </p>
       <span
         aria-hidden
         className={[
-          'mt-6 block h-px w-24 bg-gradient-to-r from-transparent via-white/60 to-transparent',
+          'mt-4 block h-px w-24 bg-gradient-to-r from-transparent via-white/60 to-transparent',
           phase === 'scanning' && !reduced ? 'animate-pulse' : '',
         ].join(' ')}
       />

@@ -1,10 +1,19 @@
 import { useState } from 'react'
 import { universes } from '../../data/universes'
 import { websites } from '../../data/websites'
+import { HIGHLIGHT_LABEL, type HighlightKind } from '../../services/discoveryService'
+import { getTrend, isEmerging, isTrending } from '../../services/recommendationService'
+import { hasRelationships } from '../../services/relationshipService'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import type { CelestialObjectType, WebsiteDefinition } from '../../types/galaxy'
 import { accentFor, glyphFor, importanceFor, urlFor } from '../../utils/celestial'
 import { interactionEvents } from '../../utils/interaction'
+import { AlternativeWebsites } from '../discovery/AlternativeWebsites'
+import { IntegrationWebsites } from '../discovery/IntegrationWebsites'
+import { RecommendationPanel } from '../discovery/RecommendationPanel'
+import { SimilarWebsites } from '../discovery/SimilarWebsites'
+import { RelatedWebsites } from '../relationships/RelatedWebsites'
+import { focusRing } from './panel'
 
 const TYPE_LABEL: Record<CelestialObjectType, string> = {
   star: 'Star',
@@ -16,13 +25,20 @@ const TYPE_LABEL: Record<CelestialObjectType, string> = {
 const buttonBase =
   'inline-flex items-center justify-center rounded-full font-sans text-[11px] tracking-[0.2em] uppercase transition-[color,border-color,background-color,transform] duration-300 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/70'
 
+const HIGHLIGHT_KINDS: HighlightKind[] = ['similar', 'alternative', 'integration']
+
 /**
  * Compact information surface for the focused website — a floating readout
  * rather than a card. Every field degrades gracefully when data is missing.
+ * Below the facts: the website's connections (the text twin of the lines in
+ * the scene), the highlight actions, and a few suggested next stops.
  */
 export function WebsiteInfoPanel() {
   const selectedWebsiteId = useGalaxyStore((s) => s.selectedWebsiteId)
   const clearWebsite = useGalaxyStore((s) => s.clearWebsite)
+  const highlight = useGalaxyStore((s) => s.highlight)
+  const setHighlight = useGalaxyStore((s) => s.setHighlight)
+  const recommendations = useGalaxyStore((s) => s.recommendations)
   // Keep the last website while fading out so the panel doesn't blank mid-transition.
   const current = websites.find((w) => w.id === selectedWebsiteId) ?? null
   const [shown, setShown] = useState<WebsiteDefinition | null>(current)
@@ -37,6 +53,14 @@ export function WebsiteInfoPanel() {
   const url = website ? urlFor(website) : null
   const accent = website ? accentFor(website) : '#c9d4ff'
   const importance = website ? importanceFor(website) : 0
+  const trend = website ? getTrend(website.id) : undefined
+  const badge = website ? (isTrending(website.id) ? '🔥 Trending' : isEmerging(website.id) ? '✦ Emerging' : null) : null
+  const activeHighlight = highlight && website && highlight.sourceId === website.id ? highlight : null
+  const canHighlight: Record<HighlightKind, boolean> = {
+    similar: !!website,
+    alternative: !!website && hasRelationships(website.id, ['alternative']),
+    integration: !!website && hasRelationships(website.id, ['integration', 'complementary']),
+  }
 
   const visit = () => {
     if (!website || !url) return
@@ -61,7 +85,8 @@ export function WebsiteInfoPanel() {
       ].join(' ')}
     >
       <div
-        className="relative rounded-2xl border border-white/10 bg-[#070a18]/60 px-6 pt-6 pb-5 backdrop-blur-md"
+        // Scrolls inside itself when the connections make it tall; never under the header.
+        className="relative max-h-[46vh] overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-[#070a18]/60 px-6 pt-6 pb-5 backdrop-blur-md sm:max-h-[calc(100vh-9.5rem)]"
         style={{
           boxShadow: `0 0 0 1px rgba(255,255,255,0.02) inset, 0 24px 70px rgba(0,0,0,0.5), 0 0 40px ${accent}22`,
         }}
@@ -99,6 +124,14 @@ export function WebsiteInfoPanel() {
             <p className="mt-1 font-sans text-[11px] tracking-[0.18em] uppercase text-space-300">
               {universe ? `${universe.name} Universe` : 'The WebGalaxy'}
             </p>
+            {badge && (
+              <p
+                className="mt-1 font-sans text-[10px] tracking-[0.18em] uppercase text-white/80"
+                title={trend ? `Demo snapshot as of ${trend.asOf} — not live traffic` : undefined}
+              >
+                {badge}
+              </p>
+            )}
           </div>
         </div>
 
@@ -124,6 +157,41 @@ export function WebsiteInfoPanel() {
             />
           </div>
         </div>
+
+        {website && (
+          <div role="group" aria-label="Discover from here" className="mt-4 flex flex-wrap gap-1.5">
+            {HIGHLIGHT_KINDS.map((kind) => {
+              const active = activeHighlight?.kind === kind
+              const enabled = canHighlight[kind]
+              return (
+                <button
+                  key={kind}
+                  type="button"
+                  onClick={() => setHighlight(kind)}
+                  disabled={!enabled || !visible}
+                  aria-pressed={active}
+                  title={enabled ? undefined : 'Nothing recorded for this website'}
+                  className={[
+                    'rounded-full border px-2.5 py-1 font-sans text-[10px] tracking-[0.14em] uppercase transition-colors duration-300',
+                    active ? 'border-white/60 bg-white/10 text-white' : 'border-white/15 text-white/75 hover:border-white/45 hover:text-white',
+                    'disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-white/15',
+                    focusRing,
+                  ].join(' ')}
+                >
+                  {HIGHLIGHT_LABEL[kind].action}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {website && activeHighlight?.kind === 'similar' && <SimilarWebsites source={website} items={activeHighlight.items} />}
+        {website && activeHighlight?.kind === 'alternative' && <AlternativeWebsites source={website} items={activeHighlight.items} />}
+        {website && activeHighlight?.kind === 'integration' && <IntegrationWebsites source={website} items={activeHighlight.items} />}
+        {website && !activeHighlight && <RelatedWebsites website={website} />}
+        {website && !activeHighlight && visible && (
+          <RecommendationPanel recommendations={recommendations} fromUniverseId={website.universeId} />
+        )}
 
         <div className="mt-6 flex items-center gap-3">
           <button

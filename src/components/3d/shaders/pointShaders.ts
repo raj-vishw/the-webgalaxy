@@ -251,3 +251,64 @@ export const cometTrailFragmentShader = /* glsl */ `
     #include <colorspace_fragment>
   }
 `
+
+/**
+ * Relationship connection: a run of small sprites along a curve between two
+ * websites. `uPattern` selects the visual language (0 continuous, 1 dashed,
+ * 2 flowing packets, 3 dot–dash, 4 trail) so relationship types are told
+ * apart by pattern and motion, not colour alone. Motion only has a direction
+ * when `uDirected` is set; symmetrical links breathe outward from the middle.
+ */
+export const connectionVertexShader = /* glsl */ `
+  attribute float aT; // 0 at the source → 1 at the target
+  uniform float uPixelRatio;
+  uniform float uSize;
+  uniform float uTime;
+  uniform float uPattern;
+  uniform float uDirected;
+  varying float vAlpha;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    // Ease off near both ends so the line never stabs into a body.
+    float ends = smoothstep(0.0, 0.07, aT) * smoothstep(1.0, 0.93, aT);
+    // Directed: phase runs source → target. Symmetrical: outward from the centre.
+    float pos = uDirected > 0.5 ? aT : abs(aT - 0.5) * 2.0;
+    float a = 1.0;
+    float size = 1.0;
+    if (uPattern < 0.5) {
+      a = 0.72 + 0.28 * sin(pos * 14.0 - uTime * 1.1);
+    } else if (uPattern < 1.5) {
+      float f = fract(aT * 16.0 - (uDirected > 0.5 ? uTime * 0.5 : 0.0));
+      a = 0.18 + 0.82 * step(0.42, f);
+    } else if (uPattern < 2.5) {
+      float f = fract(pos * 5.0 - uTime * 0.8);
+      float packet = exp(-pow((f - 0.5) * 4.5, 2.0));
+      a = 0.14 + 0.86 * packet;
+      size = 0.75 + 1.5 * packet;
+    } else if (uPattern < 3.5) {
+      float f = fract(aT * 9.0);
+      float dash = step(0.5, f) * 0.85;
+      float dot = 1.0 - step(0.09, abs(f - 0.22));
+      a = (0.16 + 0.84 * max(dash, dot)) * (0.75 + 0.25 * sin(uTime * 2.0 + aT * 9.0));
+    } else {
+      float f = fract(aT * 3.0 - uTime * 0.35);
+      a = 0.35 + 0.65 * exp(-pow((f - 0.5) * 3.0, 2.0));
+    }
+    vAlpha = a * ends;
+    gl_PointSize = clamp(uSize * size * uPixelRatio * (200.0 / max(-mv.z, 1.0)), 1.0, 8.0 * uPixelRatio);
+    gl_Position = projectionMatrix * mv;
+  }
+`
+
+export const connectionFragmentShader = /* glsl */ `
+  uniform vec3 uColor;
+  uniform float uOpacity;
+  varying float vAlpha;
+  void main() {
+    float d = length(gl_PointCoord - 0.5) * 2.0;
+    if (d > 1.0) discard;
+    float a = exp(-d * d * 3.0) * vAlpha * uOpacity;
+    gl_FragColor = vec4(uColor * a, a);
+    #include <colorspace_fragment>
+  }
+`

@@ -107,7 +107,79 @@ the galaxy (`utils/navigation.ts` → store → `CameraTransition`):
 - `utils/navigation.ts` also exposes route-shaped `locationPath()` /
   `parseLocationPath()` for a future router — universes are still not pages
 
-Still no backend, auth, submissions, admin or recommendation engine.
+## Phase 5 — Intelligence, relationships & advanced discovery
+
+The galaxy becomes a map of how the web connects. **Relationships connect
+equals** — "GitHub — Vercel" means the two are used together, never that one
+owns, contains or outranks the other; universes likewise only have
+*affinities*. Everything is deterministic and local; the service layer is
+shaped so a backend/AI can replace it later without touching the UI.
+
+- **relationship data** (`types/galaxy.ts`, `data/relationships.ts`, inline
+  `website.relationships`): a controlled vocabulary — `related`,
+  `alternative`, `integration`, `ecosystem`, `complementary`, `competitor`,
+  `same-company`. Symmetrical by default (declared once, mirrored), `directed`
+  only where a connection genuinely flows one way. Cross-universe links are
+  allowed and kept sparse
+- **validation** (`services/relationshipService.ts`): unknown ids, self links,
+  unknown types and duplicates are dropped with a dev warning — the dataset
+  deliberately ships three bad entries to prove the app never breaks
+- **visual connections** (`3d/relationships/`): when a website is focused,
+  up to six of its connections are drawn as thin animated sprite curves
+  between the *live* positions of both ends, arcing gently and fading near
+  the bodies; nothing is drawn otherwise. Pattern and motion, not colour,
+  tell the types apart — continuous (related / ecosystem / same-company),
+  dashed (alternative / competitor), flowing packets (works with), dot–dash
+  (complements). Symmetrical links breathe outward from the middle; only
+  directed ones move source → target. Far ends keep a minimum presence and a
+  quiet label even across the galaxy. Lines linger briefly while fading on a
+  change of focus
+- **panel** (`WebsiteInfoPanel`): the *Related* section is the accessible twin
+  of the lines (same set, same order, type spelled out, plus an `sr-only`
+  sentence), with a legend of the patterns on screen; *Explore Similar* /
+  *Find Alternatives* / *Works With* light up a result set in the scene and
+  list it with reasons; *You may also explore* offers 3 scored next stops.
+  Trending / emerging websites carry a small badge
+- **discovery paths & history**: every focus extends the explorer's own
+  trail (`activeDiscoveryPath`, drawn as a faint directed thread); a return to
+  the overview or a random jump starts a fresh one. *Recently explored* lives
+  in the Explore panel; history and session signals persist in
+  `sessionStorage` only (tab-local, never uploaded)
+- **recommendations** (`services/recommendationService.ts`): a plain sum of
+  bounded signals — explicit relationship, relationships with earlier stops
+  (decaying), shared tags weighted by the session's tag profile, same / paired
+  universe, repeat universe visits, prominence, object type, trend — normalised
+  to 0–1, with short explanations ("Works with GitHub", "Shares hosting,
+  devops", "You keep exploring Cybersecurity"). Recently viewed websites step
+  back. `getSimilarWebsites` adds description keywords and comparable
+  prominence and ignores the session so "similar" means the same for everyone
+- **trending & emerging** (`data/trends.ts`): a static demo snapshot
+  (`trendingScore`, `trendDirection`, `emerging`, `asOf`) — explicitly not live
+  traffic. Trending websites breathe with a wide slow glow, emerging ones
+  carry a few drifting sparks; neither changes size
+- **discovery console** (`D`): Random · Similar · Alternatives · Related ·
+  Trending · Emerging · Universe, all through the same scan → "Destination
+  found" → flight; modes that need a focused website wait for one, and an
+  empty pool is announced instead of faked
+- **universe affinities** (`data/recommendations.ts`): "Also worth exploring"
+  chips on the universe card suggest peer universes, with the reason as a
+  tooltip
+- **search & filters**: a confident name match expands into *Related to X* /
+  *Alternatives to X* sections (keyboard-navigable like the rest); the empty
+  state lists Trending and Emerging; a fourth filter — Trending / Emerging /
+  Related / Alternatives — combines with the others (related / alternatives
+  are relative to the focused website when there is one)
+- **camera**: following a connection is the same flight as any focus
+  (through the destination's universe when it lies elsewhere); the approach
+  now turns away from neighbouring bodies so the camera never parks inside
+  one, and a focus that crosses universes forgets the old free-exploration
+  pose so *Back* returns to the new universe
+- **accessibility & performance**: relationships are always available as text;
+  discovery/highlight state flows through `EmphasisBridge` into per-frame
+  sets (`sceneMotion.relations`), and at most a handful of connection curves
+  exist at any time
+
+Still no backend, auth, submissions, admin, machine learning or live data.
 
 ## Stack
 
@@ -139,7 +211,7 @@ src/
       celestial/
         CelestialObject.tsx  orbit, visibility/LOD, hover/focus easing, label
         StarWebsite.tsx  PlanetWebsite.tsx  MoonWebsite.tsx  CometWebsite.tsx  CometTrail.tsx
-        SelectionRing.tsx  ObjectGlow.tsx  GlyphSprite.tsx  celestialFrame.ts
+        SelectionRing.tsx  ObjectGlow.tsx  GlyphSprite.tsx  TrendMarker.tsx  celestialFrame.ts
       interaction/
         GalaxyInteraction.tsx    scene-wide hit ranking + motion preference
         UniverseInteraction.tsx  WebsiteInteraction.tsx   tagged hit volumes
@@ -147,15 +219,24 @@ src/
         CameraController.tsx GSAP intro, damped OrbitControls, focus follow, minimap pose
         CameraTargeting.tsx  resolves a destination (focus, position, optional waypoint)
         CameraTransition.tsx flies there — bezier through waypoints, interruptible
-      EmphasisBridge.tsx     store → per-frame emphasis/filter sets
+      relationships/
+        RelationshipGraph.tsx  connections of the focused website / highlight set
+        RelationshipLines.tsx  the drawn set, with fade-out of dropped lines
+        ConnectionLine.tsx     one animated sprite curve between two live positions
+        DiscoveryPath.tsx      the explorer's trail
+        connectionStyles.ts    type → pattern / strength
+      EmphasisBridge.tsx     store → per-frame emphasis/filter/relation sets
       PointerTracker.tsx     smoothed pointer for parallax
       Effects.tsx            bloom + vignette (lazy-loaded, skipped on low tier)
       DevBridge.tsx          dev-only window hooks for tests (`window.__webgalaxy`)
       visuals/               particle cloud, glow sprites, orbiting bodies
       shaders/               shared GLSL
     search/      SearchOverlay.tsx  SearchInput.tsx  SearchResults.tsx  SearchResult.tsx  CelestialIcon.tsx
-    filters/     FilterPanel.tsx  UniverseFilter.tsx  ObjectTypeFilter.tsx  ImportanceFilter.tsx  FilterSelect.tsx
-    discovery/   DiscoveryButton.tsx  DiscoveryAnimation.tsx
+    filters/     FilterPanel.tsx  UniverseFilter.tsx  ObjectTypeFilter.tsx  ImportanceFilter.tsx  DiscoveryFilter.tsx  FilterSelect.tsx
+    discovery/   DiscoveryMenu.tsx  DiscoveryAnimation.tsx  RecommendationPanel.tsx  HighlightList.tsx
+                 SimilarWebsites.tsx  AlternativeWebsites.tsx  IntegrationWebsites.tsx  TrendingWebsites.tsx  EmergingWebsites.tsx
+    relationships/  RelatedWebsites.tsx  RelationshipNode.tsx  RelationshipLegend.tsx
+    history/     ExplorationHistory.tsx
     navigation/  UniverseNavigator.tsx  GalaxyMinimap.tsx  LocationIndicator.tsx
     ui/
       GalaxyTitle.tsx  GalaxyNavigation.tsx  UniverseLabel.tsx  WebsiteLabel.tsx
@@ -163,7 +244,14 @@ src/
   data/
     featured.ts              static featured picks + search suggestions
     universes.ts             universe definitions (position, scale, visual type, palette, layout)
-    websites.ts              website definitions (universeId, objectType, importance, accent, glyph)
+    websites.ts              website definitions (universeId, objectType, importance, accent, glyph, relationships)
+    relationships.ts         shared relationship dataset (validated at load)
+    trends.ts                static demo trend snapshot
+    recommendations.ts       scoring weights + universe affinities
+  services/
+    relationshipService.ts   merge + validate + query the relationship graph
+    recommendationService.ts deterministic, explainable scoring; trending / emerging; similar
+    discoveryService.ts      discovery modes, highlight sets, search expansion, filter contexts
   utils/
     search.ts                ranked local search
     filtering.ts             filter model + matching
@@ -176,15 +264,17 @@ src/
     generateOrbits.ts        drift / moon / comet orbits + evaluator
   lib/
     universeGeometry/        deterministic procedural builders per visual type
-    celestialRegistry.ts     id → Object3D lookup for camera flights
+    celestialRegistry.ts     id → Object3D lookup for camera flights and connections
     sceneMotion.ts           per-frame values shared between timeline and shaders
+    sessionStorage.ts        guarded tab-local persistence of history and signals
     intro.ts                 handle used by the UI to skip the intro
     random.ts                seeded PRNG
   hooks/
     useQualityProfile.ts     device tier → render budget
     useParallax.ts           camera-space pointer parallax for a group
     useKeyboardShortcuts.ts  / ⌘K F E D M Esc
-  store/galaxyStore.ts       Zustand: view mode, ids, camera target/previous pose, overlay, search query, filters, discovery, minimap
+  store/galaxyStore.ts       Zustand: view mode, ids, camera target/previous pose, overlay, search query, filters, discovery,
+                             minimap, exploration history, session signals, recommendations, visible relationships, path, highlight
   types/galaxy.ts            domain types
   styles/index.css           Tailwind + theme tokens
 ```
@@ -203,3 +293,8 @@ src/
 - Colours are authored as sRGB hex; shaders output through
   `colorspace_fragment`, and the canvas runs without tone mapping so the
   post-processed and fallback paths look identical.
+- Relationships are edges between equals. Nothing in data, services, store or
+  UI may derive a parent/child, level or ownership from them; a relationship
+  list is ranked for *display* only.
+- Global element resets live in `@layer base` so Tailwind utilities keep
+  precedence.

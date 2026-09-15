@@ -79,6 +79,45 @@ export function flightLift(travel: number, reducedMotion: boolean): number {
   return reducedMotion ? 0 : Math.min(travel * 0.12, 18)
 }
 
+/** A body the camera should keep clear of: world position plus a radius to respect. */
+export interface Obstacle {
+  position: Vector3
+  radius: number
+}
+
+const candidate = new Vector3()
+const yAxis = new Vector3(0, 1, 0)
+/** Yaw offsets tried, nearest to the preferred direction first. */
+const YAW_STEPS = [0, 0.4, -0.4, 0.8, -0.8, 1.3, -1.3, 2.0, -2.0]
+const PITCH_STEPS = [0, 0.25, 0.5]
+
+/**
+ * Pick an approach direction whose camera position doesn't end up inside
+ * another body. Starts from the preferred direction and only turns away as
+ * far as needed, so the flight still comes from the side the user is on.
+ */
+export function clearApproach(focus: Vector3, preferred: Vector3, distance: number, obstacles: Obstacle[], out = new Vector3()): Vector3 {
+  let best = preferred.clone()
+  let bestClearance = -Infinity
+  for (const pitch of PITCH_STEPS) {
+    for (const yaw of YAW_STEPS) {
+      candidate.copy(preferred).applyAxisAngle(yAxis, yaw)
+      candidate.y += pitch
+      candidate.normalize()
+      poseFrom(focus, candidate, distance, scratch)
+      let clearance = Infinity
+      for (const o of obstacles) clearance = Math.min(clearance, scratch.distanceTo(o.position) - o.radius)
+      // Good enough: keep the direction closest to the preferred one.
+      if (clearance >= 0) return out.copy(candidate)
+      if (clearance > bestClearance) {
+        bestClearance = clearance
+        best.copy(candidate)
+      }
+    }
+  }
+  return out.copy(best)
+}
+
 /** Position at `distance` from `focus` along `direction`, into `out`. */
 export function poseFrom(focus: Vector3, direction: Vector3, distance: number, out = scratch) {
   return out.copy(focus).addScaledVector(direction, distance)

@@ -1,7 +1,12 @@
 import type { UniverseDefinition, WebsiteDefinition } from '../types/galaxy'
 import { urlFor } from './celestial'
 
-export type DiscoveryMode = 'website' | 'universe'
+/**
+ * How the galaxy chooses a destination. `random` and `universe` need no
+ * context; the others build on the current website, the session or the
+ * static trend snapshot (see `services/discoveryService.ts`).
+ */
+export type DiscoveryMode = 'random' | 'universe' | 'similar' | 'alternative' | 'related' | 'trending' | 'emerging'
 
 /** Only well-formed entries are worth sending someone to. */
 export function isDiscoverable(website: WebsiteDefinition): boolean {

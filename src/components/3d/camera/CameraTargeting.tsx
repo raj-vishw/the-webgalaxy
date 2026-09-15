@@ -1,15 +1,18 @@
 import { Vector3 } from 'three'
 import { universes } from '../../../data/universes'
-import { websites } from '../../../data/websites'
+import { websites, websitesInUniverse } from '../../../data/websites'
 import { celestialRegistry } from '../../../lib/celestialRegistry'
-import type { ViewMode } from '../../../types/galaxy'
+import type { ViewMode, WebsiteDefinition } from '../../../types/galaxy'
 import {
   approachDirection,
+  clearApproach,
   poseFrom,
   universeViewDistance,
   websiteViewDistance,
   type CameraPose,
+  type Obstacle,
 } from '../../../utils/camera'
+import { sizeFor } from '../../../utils/celestial'
 
 /**
  * A resolved camera journey: where to look, where to stand, and optionally a
@@ -42,6 +45,22 @@ const anchorPoint = new Vector3()
 const awayFromAnchor = new Vector3()
 const destinationPosition = new Vector3()
 const universeCentre = new Vector3()
+
+/** Space to keep between the camera and another body, in multiples of its radius. */
+const CLEARANCE_FACTOR = 3.5
+const CLEARANCE_MIN = 2.5
+
+/** The other websites of a universe as things the camera must not park inside. */
+function obstaclesAround(website: WebsiteDefinition): Obstacle[] {
+  const out: Obstacle[] = []
+  for (const other of websitesInUniverse(website.universeId)) {
+    if (other.id === website.id) continue
+    const object = celestialRegistry.get(other.id)
+    if (!object) continue
+    out.push({ position: object.getWorldPosition(new Vector3()), radius: Math.max(CLEARANCE_MIN, sizeFor(other) * CLEARANCE_FACTOR) })
+  }
+  return out
+}
 
 /** Where the camera should go for the current navigation state, or null to stay. */
 export function resolveDestination(ctx: TargetingContext): CameraDestination | null {
@@ -91,6 +110,9 @@ export function resolveDestination(ctx: TargetingContext): CameraDestination | n
       if (direction.y < 0.15) direction.y = 0.15
       direction.normalize()
     }
+    // Crowded neighbourhoods: turn the approach until the camera parks in
+    // clear space rather than inside a neighbouring body.
+    clearApproach(focusPoint, direction, distance, obstaclesAround(website), direction)
 
     // Coming from elsewhere in the galaxy: pass by the universe first.
     const arrivingFromOutside = previousMode === 'galaxy' || ctx.previousUniverseId !== website.universeId
