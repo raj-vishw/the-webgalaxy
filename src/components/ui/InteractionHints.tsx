@@ -21,9 +21,10 @@ const TOUCH: Array<[string, string]> = [
 export function InteractionHints() {
   const introPhase = useGalaxyStore((s) => s.introPhase)
   const viewMode = useGalaxyStore((s) => s.viewMode)
+  const quiet = useGalaxyStore((s) => s.overlay !== null || s.discovery.phase !== 'idle')
   const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false
   const [dismissedMode, setDismissedMode] = useState<ViewMode | null>(null)
-  const visible = introPhase === 'complete' && viewMode !== 'website' && dismissedMode !== viewMode
+  const visible = introPhase === 'complete' && viewMode !== 'website' && dismissedMode !== viewMode && !quiet
 
   useEffect(() => {
     if (introPhase !== 'complete' || viewMode === 'website') return
@@ -52,7 +53,7 @@ export function InteractionHints() {
     <div
       aria-hidden={!visible}
       className={[
-        'pointer-events-none absolute right-6 bottom-6 z-10 text-right sm:right-9 sm:bottom-8',
+        'pointer-events-none absolute inset-x-0 bottom-14 z-10 text-center sm:bottom-8',
         'font-sans text-[11px] leading-5 tracking-[0.18em] uppercase text-space-300/65',
         'transition-opacity duration-[1200ms]',
         visible ? 'opacity-100' : 'opacity-0',

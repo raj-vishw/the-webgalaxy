@@ -12,7 +12,8 @@ export function UniverseInfo() {
   const leaveUniverse = useGalaxyStore((s) => s.leaveUniverse)
   const universe = universes.find((u) => u.id === activeUniverseId)
   const count = universe ? websitesInUniverse(universe.id).length : 0
-  const visible = viewMode === 'universe' && !!universe
+  const discovering = useGalaxyStore((s) => s.discovery.phase !== 'idle')
+  const visible = viewMode === 'universe' && !!universe && !discovering
 
   return (
     <aside

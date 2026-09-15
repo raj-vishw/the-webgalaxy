@@ -1,6 +1,21 @@
 import { create } from 'zustand'
 import type { IntroPhase, Vec3, ViewMode } from '../types/galaxy'
+import type { DiscoveryMode } from '../utils/discovery'
+import { EMPTY_FILTERS, type WebsiteFilters } from '../utils/filtering'
 import { interactionEvents } from '../utils/interaction'
+
+export type DiscoveryPhase = 'idle' | 'scanning' | 'found' | 'travelling'
+
+export interface DiscoveryState {
+  mode: DiscoveryMode
+  phase: DiscoveryPhase
+  /** Id of the website or universe being flashed / chosen. */
+  candidateId: string | null
+  targetId: string | null
+}
+
+/** Which floating panel is open; they are mutually exclusive to keep the scene clear. */
+export type OverlayKind = 'search' | 'filters' | 'navigator' | 'discover' | null
 
 interface GalaxyState {
   /** Navigation level of the camera: galaxy → universe → website. Not a data hierarchy. */
@@ -17,6 +32,12 @@ interface GalaxyState {
   previousCameraTarget: Vec3 | null
   /** True while a camera flight is in progress. */
   isTransitioning: boolean
+  /** Search & discovery layer. Results are derived from `searchQuery`, never stored. */
+  overlay: OverlayKind
+  searchQuery: string
+  filters: WebsiteFilters
+  discovery: DiscoveryState
+  minimapVisible: boolean
   introPhase: IntroPhase
   /** DOM-side milestones driven by the intro timeline. */
   intro: {
@@ -40,6 +61,16 @@ interface GalaxyState {
   setCameraTarget: (target: Vec3) => void
   rememberCameraPose: (position: Vec3, target: Vec3) => void
   setTransitioning: (value: boolean) => void
+  openOverlay: (kind: Exclude<OverlayKind, null>) => void
+  closeOverlay: () => void
+  toggleOverlay: (kind: Exclude<OverlayKind, null>) => void
+  setSearchQuery: (query: string) => void
+  setFilters: (patch: Partial<WebsiteFilters>) => void
+  clearFilters: () => void
+  setDiscovery: (patch: Partial<DiscoveryState>) => void
+  startDiscovery: (mode: DiscoveryMode) => void
+  endDiscovery: () => void
+  setMinimapVisible: (visible: boolean) => void
   setIntroPhase: (phase: IntroPhase) => void
   setIntroMilestone: (key: keyof GalaxyState['intro'], value: boolean) => void
 }
@@ -54,6 +85,11 @@ export const useGalaxyStore = create<GalaxyState>((set, get) => ({
   previousCameraPosition: null,
   previousCameraTarget: null,
   isTransitioning: false,
+  overlay: null,
+  searchQuery: '',
+  filters: EMPTY_FILTERS,
+  discovery: { mode: 'website', phase: 'idle', candidateId: null, targetId: null },
+  minimapVisible: !(typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches),
   introPhase: 'idle',
   intro: { titleVisible: false, subtitleVisible: false, chromeVisible: false },
 
@@ -100,8 +136,9 @@ export const useGalaxyStore = create<GalaxyState>((set, get) => ({
     interactionEvents.emit({ type: 'navigate:back', to: 'universe' })
   },
   goBack: () => {
-    const { viewMode, clearWebsite, leaveUniverse } = get()
-    if (viewMode === 'website') clearWebsite()
+    const { viewMode, overlay, clearWebsite, leaveUniverse, closeOverlay } = get()
+    if (overlay) closeOverlay()
+    else if (viewMode === 'website') clearWebsite()
     else if (viewMode === 'universe') leaveUniverse()
   },
   setCameraTarget: (target) => set({ cameraTarget: target }),
@@ -111,6 +148,17 @@ export const useGalaxyStore = create<GalaxyState>((set, get) => ({
     set({ isTransitioning: value })
     interactionEvents.emit({ type: 'camera:travel', phase: value ? 'start' : 'end' })
   },
+  openOverlay: (kind) => set({ overlay: kind }),
+  closeOverlay: () => set({ overlay: null }),
+  toggleOverlay: (kind) => set((s) => ({ overlay: s.overlay === kind ? null : kind })),
+  setSearchQuery: (query) => set({ searchQuery: query }),
+  setFilters: (patch) => set((s) => ({ filters: { ...s.filters, ...patch } })),
+  clearFilters: () => set({ filters: EMPTY_FILTERS }),
+  setDiscovery: (patch) => set((s) => ({ discovery: { ...s.discovery, ...patch } })),
+  startDiscovery: (mode) =>
+    set({ overlay: null, discovery: { mode, phase: 'scanning', candidateId: null, targetId: null } }),
+  endDiscovery: () => set((s) => ({ discovery: { ...s.discovery, phase: 'idle', candidateId: null } })),
+  setMinimapVisible: (visible) => set({ minimapVisible: visible }),
   setIntroPhase: (phase) => set({ introPhase: phase }),
   setIntroMilestone: (key, value) =>
     set((state) => ({ intro: { ...state.intro, [key]: value } })),

@@ -75,7 +75,39 @@ The environment is now fully explorable, as one continuous space:
   flights without arcs, calmer orbits/dust, no idle drift or parallax,
   near-instant UI transitions
 
-Still no search, filtering, backend, auth, submissions or admin.
+## Phase 4 — Search, discovery & navigation
+
+Every way of finding something turns into the same physical journey through
+the galaxy (`utils/navigation.ts` → store → `CameraTransition`):
+
+- **global search** (`/`, Ctrl/⌘ K, or the nav button): live, ranked local
+  search over names, descriptions, tags and universe names
+  (`utils/search.ts`: exact > starts-with > partial name > universe > tag >
+  description, prominence breaks ties); universes and websites both appear;
+  arrow keys / Enter / Esc; empty-state suggestions, universe chips and a
+  static **Featured** list (`data/featured.ts`); "Nothing found" with *Clear
+  Search*. Choosing a website in another universe flies **through that
+  universe first** (a bezier via a waypoint) and the destination stays lit
+  the whole way
+- **filters** (`F`): universe × object type × importance band, combined with
+  AND; non-matching websites recede to 15 % and stop responding, nothing is
+  removed; *Clear Filters* restores everything
+- **discovery** (`D`): *Discover Something* / *Discover Universe* — candidates
+  flash through the scene and the overlay, slow down, stop on the destination
+  ("Destination found"), then the camera travels there. Only complete entries
+  (URL + description) are eligible. Reduced motion skips the scan
+- **navigation**: `Explore` universe list (`E`), top-down **minimap** (`M`)
+  with camera position/heading and clickable markers, and the location
+  indicator `THE WEBGALAXY / AI / CHATGPT`; the document title follows
+- **interruptible flights**: touching the scene mid-flight stops the camera
+  where it is and hands control back
+- **performance**: search/filter/discovery state is translated by
+  `EmphasisBridge` into per-frame sets in `sceneMotion`; typing never
+  re-renders a 3D component
+- `utils/navigation.ts` also exposes route-shaped `locationPath()` /
+  `parseLocationPath()` for a future router — universes are still not pages
+
+Still no backend, auth, submissions, admin or recommendation engine.
 
 ## Stack
 
@@ -112,20 +144,31 @@ src/
         GalaxyInteraction.tsx    scene-wide hit ranking + motion preference
         UniverseInteraction.tsx  WebsiteInteraction.tsx   tagged hit volumes
       camera/
-        CameraController.tsx GSAP intro, damped OrbitControls, focus follow
-        CameraTransition.tsx flights between view modes (restores previous pose on close)
+        CameraController.tsx GSAP intro, damped OrbitControls, focus follow, minimap pose
+        CameraTargeting.tsx  resolves a destination (focus, position, optional waypoint)
+        CameraTransition.tsx flies there — bezier through waypoints, interruptible
+      EmphasisBridge.tsx     store → per-frame emphasis/filter sets
       PointerTracker.tsx     smoothed pointer for parallax
       Effects.tsx            bloom + vignette (lazy-loaded, skipped on low tier)
       DevBridge.tsx          dev-only window hooks for tests (`window.__webgalaxy`)
       visuals/               particle cloud, glow sprites, orbiting bodies
       shaders/               shared GLSL
+    search/      SearchOverlay.tsx  SearchInput.tsx  SearchResults.tsx  SearchResult.tsx  CelestialIcon.tsx
+    filters/     FilterPanel.tsx  UniverseFilter.tsx  ObjectTypeFilter.tsx  ImportanceFilter.tsx  FilterSelect.tsx
+    discovery/   DiscoveryButton.tsx  DiscoveryAnimation.tsx
+    navigation/  UniverseNavigator.tsx  GalaxyMinimap.tsx  LocationIndicator.tsx
     ui/
       GalaxyTitle.tsx  GalaxyNavigation.tsx  UniverseLabel.tsx  WebsiteLabel.tsx
-      LocationIndicator.tsx  UniverseInfo.tsx  WebsiteInfoPanel.tsx  InteractionHints.tsx  IntroSkip.tsx
+      UniverseInfo.tsx  WebsiteInfoPanel.tsx  InteractionHints.tsx  IntroSkip.tsx  panel.ts
   data/
+    featured.ts              static featured picks + search suggestions
     universes.ts             universe definitions (position, scale, visual type, palette, layout)
     websites.ts              website definitions (universeId, objectType, importance, accent, glyph)
   utils/
+    search.ts                ranked local search
+    filtering.ts             filter model + matching
+    discovery.ts             random picks + scan sequence
+    navigation.ts            camera-targeting API + route-shaped location helpers
     camera.ts                overview / approach / view-distance / flight timing math
     interaction.ts           interaction event bus + hit ranking
     celestial.ts             sizes, fade distances, metadata fallbacks, procedural textures
@@ -140,8 +183,8 @@ src/
   hooks/
     useQualityProfile.ts     device tier → render budget
     useParallax.ts           camera-space pointer parallax for a group
-    useExplorationKeys.ts    Esc steps back a level
-  store/galaxyStore.ts       Zustand: view mode, hovered/active/selected ids, camera target, previous pose, transitioning
+    useKeyboardShortcuts.ts  / ⌘K F E D M Esc
+  store/galaxyStore.ts       Zustand: view mode, ids, camera target/previous pose, overlay, search query, filters, discovery, minimap
   types/galaxy.ts            domain types
   styles/index.css           Tailwind + theme tokens
 ```

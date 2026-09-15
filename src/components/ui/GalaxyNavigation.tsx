@@ -1,10 +1,35 @@
 import { useGalaxyStore } from '../../store/galaxyStore'
+import { hasActiveFilters } from '../../utils/filtering'
+import { focusRing } from './panel'
 
-const LINKS = ['Explore', 'Discover', 'About'] as const
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 
-/** Minimal floating chrome. The links remain placeholders until later phases. */
+/** Minimal floating chrome: wordmark plus the discovery entry points. */
 export function GalaxyNavigation() {
   const visible = useGalaxyStore((s) => s.intro.chromeVisible)
+  const overlay = useGalaxyStore((s) => s.overlay)
+  const filtersActive = useGalaxyStore((s) => hasActiveFilters(s.filters))
+  const toggleOverlay = useGalaxyStore((s) => s.toggleOverlay)
+
+  const link = (label: string, kind: 'navigator' | 'discover' | 'search' | 'filters', hint?: string) => (
+    <button
+      key={kind}
+      type="button"
+      onClick={() => toggleOverlay(kind)}
+      aria-pressed={overlay === kind}
+      className={[
+        'relative rounded-sm font-sans text-[10px] tracking-[0.1em] transition-colors duration-300 sm:text-[12px] sm:tracking-[0.18em]',
+        overlay === kind ? 'text-white' : 'text-space-300 hover:text-white',
+        focusRing,
+      ].join(' ')}
+    >
+      {label}
+      {hint && <kbd aria-hidden className="ml-1.5 hidden rounded border border-white/15 px-1 font-sans text-[9px] text-space-300/60 sm:inline">{hint}</kbd>}
+      {kind === 'filters' && filtersActive && (
+        <span aria-label="filters active" className="absolute -top-1 -right-2 h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]" />
+      )}
+    </button>
+  )
 
   return (
     <header
@@ -17,21 +42,16 @@ export function GalaxyNavigation() {
     >
       <a
         href="/"
-        className="min-w-0 truncate font-sans text-[10px] font-medium tracking-[0.2em] whitespace-nowrap text-white/85 transition-colors hover:text-white sm:text-[12px] sm:tracking-[0.3em]"
+        className={`min-w-0 truncate font-sans text-[10px] max-sm:sr-only font-medium tracking-[0.2em] whitespace-nowrap text-white/85 transition-colors hover:text-white sm:text-[12px] sm:tracking-[0.3em] ${focusRing}`}
         style={{ textShadow: '0 0 16px rgba(190,205,255,0.35)' }}
       >
         THE WEBGALAXY
       </a>
-      <nav className="flex shrink-0 items-center gap-3 sm:gap-9">
-        {LINKS.map((label) => (
-          <button
-            key={label}
-            type="button"
-            className="rounded-sm font-sans text-[10px] tracking-[0.1em] text-space-300 transition-colors duration-300 hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/60 sm:text-[12px] sm:tracking-[0.18em]"
-          >
-            {label}
-          </button>
-        ))}
+      <nav aria-label="Discovery" className="flex shrink-0 items-center gap-3 sm:gap-7">
+        {link('Explore', 'navigator')}
+        {link('Discover', 'discover')}
+        {link('Search', 'search', isMac ? '⌘K' : '/')}
+        {link('Filter', 'filters')}
       </nav>
     </header>
   )

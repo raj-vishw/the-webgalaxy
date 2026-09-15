@@ -16,6 +16,21 @@ export const sceneMotion = {
   /** Global multiplier on continuous motion (orbits, drift, spin); reduced-motion lowers it. */
   motionScale: 1,
   /**
+   * Visual emphasis driven by search, discovery and travel: emphasised ids
+   * glow, everything else quietens by `dimOthers`. Written by `EmphasisBridge`
+   * from store state; read in frame loops — never React state.
+   */
+  emphasis: {
+    active: false,
+    websiteIds: new Set<string>(),
+    universeIds: new Set<string>(),
+    dimOthers: 0,
+  },
+  /** Active filters: websites not in the set recede and stop responding. */
+  filter: { active: false, websiteIds: new Set<string>() },
+  /** Camera pose sampled each frame for the minimap (top-down x/z and heading). */
+  camera: { x: 0, z: 0, headingX: 0, headingZ: -1 },
+  /**
    * Per-universe entry reveal (0 → 1), animated when the camera travels into a
    * universe so its websites appear in stages. Absent = fully revealed.
    */

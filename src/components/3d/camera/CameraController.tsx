@@ -21,6 +21,7 @@ const INTRO_APPROACH = new Vector3(0, 5, 72)
 
 const focusPoint = new Vector3()
 const focusDelta = new Vector3()
+const heading = new Vector3()
 
 /**
  * Owns the camera: the cinematic intro (GSAP), damped orbit controls for free
@@ -78,9 +79,15 @@ export function CameraController({ profile }: CameraControllerProps) {
     }
   }, [camera, getState, profile.reducedMotion])
 
-  // Keep the camera aimed at the galaxy while GSAP owns its position.
+  // Keep the camera aimed at the galaxy while GSAP owns its position, and
+  // publish the pose for the minimap.
   useFrame(() => {
     if (introPhase !== 'complete') camera.lookAt(overview.target)
+    camera.getWorldDirection(heading)
+    sceneMotion.camera.x = camera.position.x
+    sceneMotion.camera.z = camera.position.z
+    sceneMotion.camera.headingX = heading.x
+    sceneMotion.camera.headingZ = heading.z
   })
 
   // While a website is focused, keep the camera riding along with its orbit.

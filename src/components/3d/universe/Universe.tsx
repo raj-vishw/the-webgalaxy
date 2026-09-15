@@ -78,8 +78,12 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
     // A freshly selected universe brightens and swells slightly until the
     // camera is inside it, where the proximity dim takes over.
     const selectedBoost = active ? 0.6 * (1 - proximity) : 0
-    frame.hover += (Math.max(hovered && !active ? 1 : 0, selectedBoost) - frame.hover) * k
-    const dimTarget = Math.max(dimmed ? DIM_AMOUNT : 0, proximity * PROXIMITY_DIM, distant ? DISTANT_DIM : 0)
+    const { emphasis } = sceneMotion
+    const emphasized = emphasis.active && emphasis.universeIds.has(definition.id)
+    const emphasisBoost = emphasized ? 0.5 * (1 - proximity) : 0
+    frame.hover += (Math.max(hovered && !active ? 1 : 0, selectedBoost, emphasisBoost) - frame.hover) * k
+    const quieted = emphasis.active && !emphasized ? emphasis.dimOthers * 0.6 : 0
+    const dimTarget = Math.max(dimmed ? DIM_AMOUNT : 0, proximity * PROXIMITY_DIM, distant ? DISTANT_DIM : 0, quieted)
     frame.dim += (dimTarget - frame.dim) * k * 0.6
 
     const scale = definition.scale * (1 + (HOVER_SCALE - 1) * frame.hover)

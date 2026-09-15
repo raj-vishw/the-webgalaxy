@@ -5,6 +5,7 @@ import { useGalaxyStore } from '../../store/galaxyStore'
 import { BackgroundNebula } from './BackgroundNebula'
 import { CameraController } from './camera/CameraController'
 import { DevBridge } from './DevBridge'
+import { EmphasisBridge } from './EmphasisBridge'
 import { GalaxyInteraction } from './interaction/GalaxyInteraction'
 import { PointerTracker } from './PointerTracker'
 import { StarField } from './StarField'
@@ -34,6 +35,7 @@ export function WebGalaxyScene() {
       <directionalLight position={[-40, 60, 80]} intensity={3.2} color="#fff4e6" />
       <PointerTracker enabled={!profile.coarsePointer && !profile.reducedMotion} />
       <GalaxyInteraction reducedMotion={profile.reducedMotion} />
+      <EmphasisBridge />
       {import.meta.env.DEV && <DevBridge />}
       <CameraController profile={profile} />
       <BackgroundNebula />

@@ -92,8 +92,17 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
     const detailDistance = size * DETAIL_FACTOR * (f.lod === 'detail' ? 1.15 : 1)
     f.lod = distance < detailDistance ? 'detail' : distance < lodDistance ? 'full' : 'point'
 
+    // Search / discovery / travel emphasis and filters are read straight from
+    // the shared motion state so they cost no React renders.
+    const { emphasis, filter } = sceneMotion
+    const emphasized = emphasis.active && emphasis.websiteIds.has(website.id)
+    const filteredOut = filter.active && !filter.websiteIds.has(website.id)
+    if (emphasized) f.visibility = Math.max(f.visibility, entryReveal * 0.85)
+    else if (emphasis.active) f.visibility *= 1 - emphasis.dimOthers
+    if (filteredOut) f.visibility *= 0.15
+
     const k = 1 - Math.exp(-delta * 6)
-    f.hover += ((hovered ? 1 : 0) - f.hover) * k
+    f.hover += (Math.max(hovered ? 1 : 0, emphasized ? 0.7 : 0) - f.hover) * k
     f.focus += ((selected ? 1 : 0) - f.focus) * k
     f.dim += ((dimmed ? 1 : 0) - f.dim) * k * 0.6
 
