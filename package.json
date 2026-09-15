@@ -4,9 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n web,api -c cyan,magenta \"npm:dev:web\" \"npm:dev:api\"",
+    "dev:web": "vite",
+    "dev:api": "npm run dev --workspace backend",
+    "dev:admin": "npm run dev --workspace admin",
+    "dev:all": "concurrently -n web,api,admin -c cyan,magenta,yellow \"npm:dev:web\" \"npm:dev:api\" \"npm:dev:admin\"",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "build:all": "npm run build && npm run build --workspace backend && npm run build --workspace admin",
+    "lint": "oxlint src backend/src admin/src",
+    "test": "vitest run && npm test --workspace backend",
+    "test:web": "vitest run",
+    "test:api": "npm test --workspace backend",
+    "db:migrate": "npm run db:migrate --workspace backend",
+    "db:seed": "npm run db:seed --workspace backend",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -29,6 +39,12 @@
     "oxlint": "^1.81.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0"
-  }
+    "vite": "^8.3.0",
+    "concurrently": "^10.0.5",
+    "vitest": "^5.0.0"
+  },
+  "workspaces": [
+    "backend",
+    "admin"
+  ]
 }
