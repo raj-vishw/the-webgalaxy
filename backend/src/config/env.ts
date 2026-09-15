@@ -12,7 +12,7 @@ const schema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
   PGLITE_DIR: z.string().default('./data/pglite'),
-  CORS_ORIGINS: z.string().default('http://localhost:5173,http://localhost:5174'),
+  CORS_ORIGINS: z.string().default('http://localhost:5173'),
   JWT_SECRET: z.string().min(16).default('dev-only-secret-change-me-please'),
   JWT_EXPIRES_IN: z.string().default('8h'),
   ADMIN_EMAIL: z.string().email().default('admin@webgalaxy.local'),

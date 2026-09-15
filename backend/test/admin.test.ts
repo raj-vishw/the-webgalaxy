@@ -1,15 +1,13 @@
 import assert from 'node:assert/strict'
 import { after, before, describe, it } from 'node:test'
-import { ADMIN, EDITOR, auth, createTestApp, login, type TestApp } from './helpers.ts'
+import { ADMIN, auth, createTestApp, login, type TestApp } from './helpers.ts'
 
 describe('admin API', () => {
   let t: TestApp
   let admin: string
-  let editor: string
   before(async () => {
     t = await createTestApp()
     admin = await login(t.app, ADMIN)
-    editor = await login(t.app, EDITOR)
   })
   after(() => t.close())
 
@@ -21,7 +19,7 @@ describe('admin API', () => {
     assert.equal(unknown.statusCode, 401)
     const me = await t.app.inject({ method: 'GET', url: '/api/admin/auth/me', headers: auth(admin) })
     assert.equal(me.json().data.email, ADMIN.email)
-    assert.equal(me.json().data.role, 'admin')
+    assert.ok(!('role' in me.json().data), 'no roles: there is one administrator')
   })
 
   it('protects every admin route', async () => {
@@ -40,15 +38,23 @@ describe('admin API', () => {
     }
   })
 
-  it('enforces roles: editors cannot delete or create universes', async () => {
-    const del = await t.app.inject({ method: 'DELETE', url: '/api/admin/websites/gitlab', headers: auth(editor) })
-    assert.equal(del.statusCode, 403)
-    assert.equal(del.json().error.code, 'FORBIDDEN')
-    const universe = await t.app.inject({ method: 'POST', url: '/api/admin/universes', headers: auth(editor), payload: {} })
-    assert.equal(universe.statusCode, 403)
-    const edit = await t.app.inject({ method: 'PATCH', url: '/api/admin/websites/gitlab', headers: auth(editor), payload: { importance: 76 } })
-    assert.equal(edit.statusCode, 200)
-    assert.equal(edit.json().data.importance, 76)
+  it('keeps exactly one administrator, matching the environment', async () => {
+    const { authService } = await import('../src/services/authService.ts')
+    const { adminRepo } = await import('../src/repositories/adminRepo.ts')
+    const { hashPassword } = await import('../src/utils/password.ts')
+    const { loadEnv } = await import('../src/config/env.ts')
+    const { TtlCache } = await import('../src/utils/cache.ts')
+    // A stray second account (e.g. left over from an old deployment)…
+    await adminRepo.create(t.handle.db, { email: 'stray@test.local', name: 'Stray', passwordHash: await hashPassword('stray-password-123') })
+    assert.equal(await adminRepo.count(t.handle.db), 2)
+    const env = loadEnv({ NODE_ENV: 'test', JWT_SECRET: 'test-secret-test-secret-test', DATABASE_URL: '', ADMIN_EMAIL: ADMIN.email, ADMIN_PASSWORD: ADMIN.password, ADMIN_NAME: 'Admin' })
+    await authService.ensureAdmin({ db: t.handle.db, env, cache: new TtlCache(), log: t.app.log })
+    // …is removed, and the configured one remains the only account.
+    assert.equal(await adminRepo.count(t.handle.db), 1)
+    const stray = await t.app.inject({ method: 'POST', url: '/api/admin/auth/login', payload: { email: 'stray@test.local', password: 'stray-password-123' } })
+    assert.equal(stray.statusCode, 401)
+    const ok = await t.app.inject({ method: 'POST', url: '/api/admin/auth/login', payload: ADMIN })
+    assert.equal(ok.statusCode, 200)
   })
 
   it('shows an overview', async () => {
@@ -153,7 +159,7 @@ describe('admin API', () => {
     const actions = res.json().data.map((e: { action: string }) => e.action)
     assert.ok(actions.includes('website.create'))
     assert.ok(actions.includes('relationship.delete'))
-    const denied = await t.app.inject({ method: 'GET', url: '/api/admin/audit', headers: auth(editor) })
-    assert.equal(denied.statusCode, 403)
+    const denied = await t.app.inject({ method: 'GET', url: '/api/admin/audit' })
+    assert.equal(denied.statusCode, 401)
   })
 })

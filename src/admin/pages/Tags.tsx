@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { api } from '../services/api'
-import type { Tag, User } from '../services/types'
+import type { Tag } from '../services/types'
 import { Notice, PageTitle, Table } from '../components/ui'
 import { btnDanger, btnGhost, btnPrimary, input } from '../components/styles'
 import { describeError, useLoad } from '../hooks'
 
-export function Tags({ user }: { user: User }) {
+export function Tags() {
   const list = useLoad(() => api<Tag[]>('/admin/tags').then((r) => r.data))
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -53,7 +53,7 @@ export function Tags({ user }: { user: User }) {
               >
                 Rename
               </button>
-              {user.role === 'admin' && (
+              {(
                 <button type="button" className={btnDanger} onClick={() => window.confirm(`Delete tag "${t.name}" from every website?`) && run(() => api(`/admin/tags/${t.id}`, { method: 'DELETE' }))}>
                   Delete
                 </button>

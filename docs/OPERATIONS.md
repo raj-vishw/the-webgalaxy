@@ -4,22 +4,22 @@ How to run The WebGalaxy in production: deployment shape, configuration, databas
 
 ## Topology
 
-Three independently deployable parts:
+Independently deployable parts:
 
 | Part | Artifact | Where |
 | --- | --- | --- |
 | Public galaxy | `dist/` (static) | any static host / CDN with SPA fallback (`/*` → `index.html`) |
-| Admin app | `admin/dist/` (static) | a separate origin (e.g. `admin.example.com`), ideally behind additional access controls (VPN, SSO proxy, IP allow-list) |
+| Administration | part of `dist/`, at `/admin` | same host as the galaxy; consider an IP allow-list or VPN rule for `/admin` at the proxy |
 | API | `backend/dist/` (`node backend/dist/server.js`) or the `backend/Dockerfile` image | a Node host or container platform, behind TLS |
 | Database | PostgreSQL 15+ | managed PostgreSQL or `docker compose up db` |
 
-The public app talks to the API at `VITE_API_URL` (build-time). Same-origin (`/api` reverse-proxied to the API) avoids CORS entirely; otherwise list both frontends in `CORS_ORIGINS`.
+The public app (and `/admin`) talks to the API at `VITE_API_URL` (build-time). Same-origin (`/api` reverse-proxied to the API) avoids CORS entirely; otherwise list the web origin in `CORS_ORIGINS`.
 
 ## Configuration
 
 All configuration is environment variables (`backend/.env.example`). Production hard requirements enforced at startup: `NODE_ENV=production`, `DATABASE_URL`, a real `JWT_SECRET` (`openssl rand -hex 32`), a changed `ADMIN_PASSWORD`. Recommended: `TRUST_PROXY=true` behind a proxy, `LOG_LEVEL=info`, rate limits tuned to expected traffic (`RATE_LIMIT_GLOBAL`, `RATE_LIMIT_SEARCH`, `RATE_LIMIT_SUBMIT`).
 
-Rotate `JWT_SECRET` to invalidate every admin session at once.
+Rotate `JWT_SECRET` to invalidate the administrator's sessions; change `ADMIN_PASSWORD` and restart to change the password.
 
 ## Database
 
@@ -48,7 +48,7 @@ The database is the source of truth and is not disposable.
 ## Security checklist
 
 - Public API is read-only except `POST /api/submissions`, which is rate limited, validated (Zod + database constraints), duplicate-checked on a normalised URL, honeypot-protected, and never publishes without moderation.
-- Admin routes require a JWT (`Authorization: Bearer`) and a role; authorization is enforced server-side in `routes/admin.ts` regardless of what the admin UI shows. No cookies are used, so CSRF does not apply.
+- There is one administrator, defined by `ADMIN_EMAIL` / `ADMIN_PASSWORD`; the API reconciles the `admin_users` table to exactly that account on start. Admin routes require its JWT (`Authorization: Bearer`); enforcement is server-side in `routes/admin.ts` regardless of what the UI shows. No cookies are used, so CSRF does not apply. Visitors never sign in.
 - Passwords: scrypt with per-password salt. Tokens expire (`JWT_EXPIRES_IN`). Logs redact authorization headers, passwords and tokens.
 - URLs: only public `http(s)` hosts with a real hostname; `javascript:`, `data:`, credentials, private/loopback hosts are rejected. "Visit Website" opens with `noopener,noreferrer` in a new tab; nothing is embedded in iframes and no submitted content is executed.
 - Output: React escapes all text; descriptions are rendered as text, never HTML. Logo URLs are admin-only and rendered as `<img>` only.

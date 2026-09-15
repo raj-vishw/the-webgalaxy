@@ -28,7 +28,6 @@ export const UNIVERSE_VISUAL_TYPES = ['spiral', 'cluster', 'nebula', 'stream', '
 export const OBJECT_TYPES = ['star', 'planet', 'moon', 'comet'] as const
 export const RELATIONSHIP_TYPES = ['related', 'alternative', 'integration', 'ecosystem', 'complementary', 'competitor', 'same-company'] as const
 export const SUBMISSION_STATUSES = ['pending', 'approved', 'rejected'] as const
-export const ADMIN_ROLES = ['admin', 'editor'] as const
 export const TREND_DIRECTIONS = ['up', 'steady', 'down'] as const
 
 const inList = (column: string, values: readonly string[]) =>
@@ -224,12 +223,11 @@ export const adminUsers = pgTable(
     name: text('name').notNull(),
     /** scrypt hash, `scrypt$N$r$p$salt$hash` — never a plain password. */
     passwordHash: text('password_hash').notNull(),
-    role: text('role').notNull().default('editor'),
     isActive: boolean('is_active').notNull().default(true),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [uniqueIndex('admin_users_email_idx').on(t.email), check('admin_users_role_check', inList('role', ADMIN_ROLES))],
+  (t) => [uniqueIndex('admin_users_email_idx').on(t.email)],
 )
 
 /** Audit trail of administrative actions (who changed what, when). */

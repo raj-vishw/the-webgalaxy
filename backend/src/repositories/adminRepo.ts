@@ -1,4 +1,4 @@
-import { count, desc, eq } from 'drizzle-orm'
+import { count, desc, eq, ne } from 'drizzle-orm'
 import type { Database } from '../db/client.js'
 import { adminAuditLog, adminUsers, type AdminUserRow } from '../db/schema.js'
 
@@ -21,6 +21,16 @@ export const adminRepo = {
   async create(db: Database, data: typeof adminUsers.$inferInsert): Promise<AdminUserRow> {
     const [row] = await db.insert(adminUsers).values({ ...data, email: data.email.toLowerCase() }).returning()
     return row
+  },
+
+  async update(db: Database, id: string, patch: Partial<typeof adminUsers.$inferInsert>) {
+    await db.update(adminUsers).set({ ...patch, updatedAt: new Date() }).where(eq(adminUsers.id, id))
+  },
+
+  /** Deletes every administrator except `keepId`; returns how many were removed. */
+  async removeOthers(db: Database, keepId: string): Promise<number> {
+    const rows = await db.delete(adminUsers).where(ne(adminUsers.id, keepId)).returning()
+    return rows.length
   },
 
   async touchLogin(db: Database, id: string) {

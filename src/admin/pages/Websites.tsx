@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../services/api'
-import type { Universe, User, Website } from '../services/types'
+import type { Universe, Website } from '../services/types'
 import { OBJECT_TYPES } from '../services/types'
 import { Badge, Field, Notice, Pager, PageTitle, Table } from '../components/ui'
 import { btnDanger, btnGhost, btnPrimary, input, selectInline } from '../components/styles'
@@ -70,7 +70,7 @@ const toBody = (d: Draft) => ({
 })
 
 /** Create / edit form. Trending and emerging are plain switches — admin-controlled, not measured. */
-function Editor({ website, universes, user, onSaved, onClose }: { website: Website | null; universes: Universe[]; user: User; onSaved: () => void; onClose: () => void }) {
+function Editor({ website, universes, onSaved, onClose }: { website: Website | null; universes: Universe[]; onSaved: () => void; onClose: () => void }) {
   const [d, setD] = useState<Draft>(draftOf(website, universes[0]?.slug))
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -175,7 +175,7 @@ function Editor({ website, universes, user, onSaved, onClose }: { website: Websi
         <button type="submit" disabled={busy} className={btnPrimary}>
           {busy ? 'Saving…' : website ? 'Save changes' : 'Create website'}
         </button>
-        {website && user.role === 'admin' && (
+        {website && (
           <button type="button" disabled={busy} onClick={remove} className={btnDanger}>
             Delete
           </button>
@@ -185,7 +185,7 @@ function Editor({ website, universes, user, onSaved, onClose }: { website: Websi
   )
 }
 
-export function Websites({ user }: { user: User }) {
+export function Websites() {
   const [q, setQ] = useState('')
   const [universe, setUniverse] = useState('')
   const [page, setPage] = useState(1)
@@ -218,7 +218,7 @@ export function Websites({ user }: { user: User }) {
       </PageTitle>
       {editing !== null && universes.data && (
         <div className="mb-5">
-          <Editor website={editing === 'new' ? null : editing} universes={universes.data} user={user} onSaved={onSaved} onClose={() => setEditing(null)} />
+          <Editor website={editing === 'new' ? null : editing} universes={universes.data} onSaved={onSaved} onClose={() => setEditing(null)} />
         </div>
       )}
       {list.error && <Notice kind="error">{list.error}</Notice>}

@@ -29,7 +29,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@webgalaxy.local}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       TRUST_PROXY: "true"
     ports:
       - "4000:4000"

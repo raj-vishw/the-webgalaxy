@@ -8,7 +8,6 @@ import { hashPassword } from '../src/utils/password.ts'
 import { hashString } from '../src/utils/slug.ts'
 
 export const ADMIN = { email: 'admin@test.local', password: 'test-password-123' }
-export const EDITOR = { email: 'editor@test.local', password: 'editor-password-123' }
 
 export interface TestApp {
   app: FastifyInstance
@@ -59,10 +58,7 @@ export async function createTestApp(): Promise<TestApp> {
     { sourceWebsiteId: chatgpt.id, targetWebsiteId: claude.id, type: 'alternative' },
     { sourceWebsiteId: github.id, targetWebsiteId: chatgpt.id, type: 'integration', note: 'Cross-universe' },
   ])
-  await db.insert(adminUsers).values([
-    { email: ADMIN.email, name: 'Admin', passwordHash: await hashPassword(ADMIN.password), role: 'admin' },
-    { email: EDITOR.email, name: 'Editor', passwordHash: await hashPassword(EDITOR.password), role: 'editor' },
-  ])
+  await db.insert(adminUsers).values({ email: ADMIN.email, name: 'Admin', passwordHash: await hashPassword(ADMIN.password) })
 
   const app = await buildApp({ env, db, rateLimit: false })
   await app.ready()

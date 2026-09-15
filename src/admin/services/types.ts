@@ -77,7 +77,6 @@ export interface Overview {
 export interface User {
   id: string
   email: string
-  role: 'admin' | 'editor'
 }
 
 export const RELATIONSHIP_TYPES = ['related', 'alternative', 'integration', 'ecosystem', 'complementary', 'competitor', 'same-company'] as const

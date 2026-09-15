@@ -1,12 +1,16 @@
 import { loadEnv } from './config/env.js'
 import { createDatabase } from './db/client.js'
 import { buildApp } from './app.js'
+import { authService } from './services/authService.js'
+import { TtlCache } from './utils/cache.js'
 
 /** Entry point: migrate, build, listen, and shut down cleanly on signals. */
 const env = loadEnv()
 const handle = await createDatabase({ databaseUrl: env.DATABASE_URL, pgliteDir: env.PGLITE_DIR })
 await handle.migrate()
 const app = await buildApp({ env, db: handle.db })
+// The one administrator always matches ADMIN_EMAIL / ADMIN_PASSWORD; nothing else can sign in.
+await authService.ensureAdmin({ db: handle.db, env, cache: new TtlCache(), log: app.log })
 
 const shutdown = async (signal: string) => {
   app.log.info({ signal }, 'shutting down')

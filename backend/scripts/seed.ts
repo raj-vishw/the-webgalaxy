@@ -137,8 +137,8 @@ if (skipped.length) log('skipped relationships: ' + skipped.join(', '))
 
 // ─── First administrator ─────────────────────────────────────────────────────
 const ctx = { db, env, cache: new TtlCache(), log: console as never }
-const admin = await authService.ensureFirstAdmin(ctx)
-log(`admin ${admin}`, { email: env.ADMIN_EMAIL })
+const admin = await authService.ensureAdmin(ctx)
+log(`administrator ${admin} (the only account)`, { email: env.ADMIN_EMAIL })
 
 await handle.close()
 log(`done (${handle.kind})`)

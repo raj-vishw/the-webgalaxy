@@ -1,17 +1,17 @@
 import type { FastifyInstance } from 'fastify'
 import type { AppContext } from '../context.js'
 import { adminController } from '../controllers/adminController.js'
-import { requireAuth, requireRole } from '../middleware/auth.js'
+import { requireAuth } from '../middleware/auth.js'
 
 /**
- * Administrative API. Everything except login requires a valid admin JWT;
- * destructive operations additionally require the `admin` role (editors can
- * review submissions and edit content).
+ * Administrative API. Everything except login requires the administrator's
+ * JWT. There is a single administrator (configured through the environment);
+ * there are no other accounts or roles.
  */
 export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
   const c = adminController(ctx)
   const staff = { preHandler: requireAuth }
-  const adminOnly = { preHandler: requireRole('admin') }
+  const adminOnly = staff
 
   app.post('/auth/login', { config: { rateLimit: { max: 10, timeWindow: '15 minutes' } } }, c.login)
   app.get('/auth/me', staff, c.me)

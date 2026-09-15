@@ -99,17 +99,17 @@ Returns 201 with the pending submission. URLs are normalised (scheme, `www.`, tr
 
 ## Admin endpoints (JWT required)
 
-Sign in, then send `Authorization: Bearer <token>`. Roles: `admin` (everything) and `editor` (review, create/edit content; no deletes, no new universes).
+There is exactly one administrator (`ADMIN_EMAIL` / `ADMIN_PASSWORD` in the environment; the API reconciles the account on start). Sign in, then send `Authorization: Bearer <token>`. No other accounts or roles exist.
 
 - `POST /api/admin/auth/login` `{ email, password }` → `{ token, user }` (10 attempts / 15 min)
 - `GET /api/admin/auth/me`
 - `GET /api/admin/overview` → counts of websites, universes, submissions by status, relationships
-- `GET /api/admin/audit` (admin) — last 50 administrative actions
+- `GET /api/admin/audit` — last 50 administrative actions
 - Submissions: `GET /api/admin/submissions?status=pending|approved|rejected`, `GET /api/admin/submissions/:id`, `POST /api/admin/submissions/:id/review` with `{ "action": "approve", "overrides": { universeId, objectType, importance, name, slug, description, tags, logoUrl } }` or `{ "action": "reject", "rejectionReason": "…" }`. Approval creates the website and returns `{ submission, website }`.
-- Websites: `GET /api/admin/websites` (same query as public plus `includeInactive`), `GET /api/admin/websites/:id`, `POST /api/admin/websites`, `PATCH /api/admin/websites/:id`, `DELETE /api/admin/websites/:id` (admin). Body fields: `name, slug?, url, description, logoUrl, universeId (slug|id), objectType, importance, popularityScore, trendingScore, trendDirection, isTrending, isEmerging, isActive, accent, glyph, orbitAnchorId (slug|id), tags[]`.
-- Universes: `GET /api/admin/universes` (includes inactive), `POST /api/admin/universes` (admin), `PATCH /api/admin/universes/:id`. Body: `name, slug?, description, visualType, visualConfig, sortOrder, isActive`.
+- Websites: `GET /api/admin/websites` (same query as public plus `includeInactive`), `GET /api/admin/websites/:id`, `POST /api/admin/websites`, `PATCH /api/admin/websites/:id`, `DELETE /api/admin/websites/:id`. Body fields: `name, slug?, url, description, logoUrl, universeId (slug|id), objectType, importance, popularityScore, trendingScore, trendDirection, isTrending, isEmerging, isActive, accent, glyph, orbitAnchorId (slug|id), tags[]`.
+- Universes: `GET /api/admin/universes` (includes inactive), `POST /api/admin/universes`, `PATCH /api/admin/universes/:id`. Body: `name, slug?, description, visualType, visualConfig, sortOrder, isActive`.
 - Relationships: `GET /api/admin/relationships`, `POST /api/admin/relationships` `{ sourceId, targetId, type, directed?, strength?, note? }`, `PATCH /api/admin/relationships/:id`, `DELETE /api/admin/relationships/:id`. Self links and duplicates (either direction) are refused.
-- Tags: `GET /api/admin/tags`, `POST /api/admin/tags` `{ name }`, `PATCH /api/admin/tags/:id`, `DELETE /api/admin/tags/:id` (admin).
+- Tags: `GET /api/admin/tags`, `POST /api/admin/tags` `{ name }`, `PATCH /api/admin/tags/:id`, `DELETE /api/admin/tags/:id`.
 
 Admin writes clear the public caches immediately and are recorded in `admin_audit_log` and the server log.
 

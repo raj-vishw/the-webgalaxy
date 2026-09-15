@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../services/api'
-import type { Universe, User } from '../services/types'
+import type { Universe } from '../services/types'
 import { VISUAL_TYPES } from '../services/types'
 import { Badge, Field, Notice, PageTitle, Table } from '../components/ui'
 import { btnGhost, btnPrimary, input } from '../components/styles'
@@ -14,7 +14,7 @@ const DEFAULT_CONFIG = {
   layout: { spread: [0.9, 0.45, 0.8], coreBias: 0.4, energy: 1, dust: 1 },
 }
 
-function Editor({ universe, user, onSaved, onClose }: { universe: Universe | null; user: User; onSaved: () => void; onClose: () => void }) {
+function Editor({ universe, onSaved, onClose }: { universe: Universe | null; onSaved: () => void; onClose: () => void }) {
   const [name, setName] = useState(universe?.name ?? '')
   const [description, setDescription] = useState(universe?.description ?? '')
   const [visualType, setVisualType] = useState(universe?.visualType ?? 'spiral')
@@ -74,7 +74,7 @@ function Editor({ universe, user, onSaved, onClose }: { universe: Universe | nul
       </div>
       {error && <Notice kind="error">{error}</Notice>}
       <div>
-        <button type="submit" disabled={busy || (!universe && user.role !== 'admin')} className={btnPrimary}>
+        <button type="submit" disabled={busy} className={btnPrimary}>
           {busy ? 'Saving…' : universe ? 'Save changes' : 'Create universe'}
         </button>
       </div>
@@ -82,7 +82,7 @@ function Editor({ universe, user, onSaved, onClose }: { universe: Universe | nul
   )
 }
 
-export function Universes({ user }: { user: User }) {
+export function Universes() {
   const [editing, setEditing] = useState<Universe | null | 'new'>(null)
   const list = useLoad(() => api<Universe[]>('/admin/universes').then((r) => r.data))
   const onSaved = () => {
@@ -92,15 +92,13 @@ export function Universes({ user }: { user: User }) {
   return (
     <>
       <PageTitle title="Universes">
-        {user.role === 'admin' && (
-          <button type="button" className={btnPrimary} onClick={() => setEditing('new')}>
-            New universe
-          </button>
-        )}
+        <button type="button" className={btnPrimary} onClick={() => setEditing('new')}>
+          New universe
+        </button>
       </PageTitle>
       {editing !== null && (
         <div className="mb-5">
-          <Editor universe={editing === 'new' ? null : editing} user={user} onSaved={onSaved} onClose={() => setEditing(null)} />
+          <Editor universe={editing === 'new' ? null : editing} onSaved={onSaved} onClose={() => setEditing(null)} />
         </div>
       )}
       {list.error && <Notice kind="error">{list.error}</Notice>}

@@ -191,17 +191,17 @@ and the offline fallback. The 3D experience is unchanged and needs no login.
                     Fastify API  ·  backend/
                           ↑
             ┌─────────────┴─────────────┐
-       WebGalaxy UI (src/)         Admin (admin/)
+       WebGalaxy UI (src/)         Admin (src/admin, at /admin)
 ```
 
-- **backend/** (Fastify 5 · TypeScript · Drizzle ORM · Zod · pino): `routes → controllers → services → repositories → db`. Public routes are read-only plus moderated submissions; `/api/admin/*` needs a JWT (roles `admin` / `editor`). Helmet, CORS allow-list, rate limits (global, search, discovery, submissions, login), 64 KB bodies, scrypt passwords, redacted logs, an `admin_audit_log`, `GET /health` and `/health/ready`. Full reference in [backend/API.md](../backend/API.md).
+- **backend/** (Fastify 5 · TypeScript · Drizzle ORM · Zod · pino): `routes → controllers → services → repositories → db`. Public routes are read-only plus moderated submissions; `/api/admin/*` needs the administrator's JWT (one account, no roles). Helmet, CORS allow-list, rate limits (global, search, discovery, submissions, login), 64 KB bodies, scrypt passwords, redacted logs, an `admin_audit_log`, `GET /health` and `/health/ready`. Full reference in [backend/API.md](../backend/API.md).
 - **database**: `universes`, `websites` (slug + normalised URL unique, importance/popularity/trend fields, `is_active`, `position_seed`), `tags` + `website_tags`, `website_relationships` (check: no self link; unique per unordered pair + type), `submissions`, `admin_users`, `admin_audit_log`. Migrations in `backend/drizzle/` (`npm run db:migrate`), seed in `backend/scripts/seed.ts` (`npm run db:seed`, `db:reset`) reading `src/data/*.ts`. **No `parentUniverseId`, no nesting** — universes are peers by construction.
 - **PostgreSQL or embedded**: set `DATABASE_URL` for a real server (see `docker-compose.yml`); leave it unset and the API runs on PGlite (embedded PostgreSQL) under `backend/data/` — zero setup for development, in-memory for tests. Production refuses to start without `DATABASE_URL`, a real `JWT_SECRET` and a changed `ADMIN_PASSWORD`.
 - **frontend data layer** (`src/services/api.ts`, `universeApi`, `websiteApi`, `searchApi`, `discoveryApi`, `relationshipApi`, `submissionApi`; hooks `useUniverses`, `useWebsites`, `useSearch`, `useDiscovery`): components never call `fetch`. `src/store/catalogStore.ts` renders instantly from the last cached load (localStorage) or the bundled dataset, then loads **progressively** — universes → lightweight website records → relationships — swapping each layer in; full records (description…) are fetched when a website is selected. Positions stay deterministic (slug-seeded), so nothing rearranges when data reloads.
 - **graceful failure**: if the API is unreachable the scene keeps rendering from cached/bundled data with a quiet "Unable to load some galaxy data — Retry" notice and cached data clearly dated; search falls back to the local index; submissions explain they need the API.
 - **search & discovery** go through the API (`/api/search`, `/api/discovery/*`) with the local index answering instantly and the ranked backend answer replacing it; the recommendation logic stays local behind a swappable `RecommendationProvider` (`src/services/recommendationProvider.ts`).
 - **+ Add** (`A`): public submission form with live duplicate detection ("This website is already in the WebGalaxy — Travel to …"), honeypot, URL validation on both sides; submissions are `pending` until reviewed.
-- **admin/** (separate Vite app, plain UI, `http://localhost:5174`): sign in, overview, submissions (approve with universe/type/importance overrides, or reject with a reason), websites (create/edit/disable/delete, tags, trending & emerging switches, popularity), universes (edit metadata & visual configuration, activate/deactivate, create), relationships (create/remove with self/duplicate refusal), tags. Approving a submission publishes the website; the public galaxy picks it up on its next load or when the tab regains focus.
+- **/admin** (`src/admin`, plain UI inside the same build): the single administrator signs in, overview, submissions (approve with universe/type/importance overrides, or reject with a reason), websites (create/edit/disable/delete, tags, trending & emerging switches, popularity), universes (edit metadata & visual configuration, activate/deactivate, create), relationships (create/remove with self/duplicate refusal), tags. Approving a submission publishes the website; the public galaxy picks it up on its next load or when the tab regains focus.
 - **tests**: `npm run test:api` — 29 backend tests on an in-memory database (universes, websites, pagination, validation, search, discovery, relationships, submissions & moderation, authentication, authorization, audit, URL/password utilities); `npm run test:web` — 15 vitest tests (API client, mappers, catalog fallback/progressive load/retry).
 
 ### Running Phase 6
@@ -211,7 +211,7 @@ npm install
 cp backend/.env.example backend/.env      # optional; defaults run on embedded PostgreSQL
 npm run db:seed                            # migrate + seed (universes, websites, tags, relationships, trends, first admin)
 npm run dev                                # web (5173) + API (4000)
-npm run dev:admin                          # admin (5174) — sign in with ADMIN_EMAIL / ADMIN_PASSWORD
+# admin: http://localhost:5173/admin — sign in with ADMIN_EMAIL / ADMIN_PASSWORD
 npm test                                   # frontend + backend tests
 ```
 
@@ -242,7 +242,6 @@ PostgreSQL (PGlite in development) · Zod · Vitest
 ```sh
 npm install
 npm run dev        # web (http://localhost:5173) + API (http://localhost:4000)
-npm run dev:all    # + admin (http://localhost:5174)
 npm run build:all  # web, API and admin production builds
 npm run lint
 npm test
@@ -347,8 +346,8 @@ backend/
   scripts/seed.ts            migrates src/data/*.ts into the database
   test/                      node:test suites on in-memory PostgreSQL
   API.md  Dockerfile  .env.example
-admin/
-  src/App.tsx pages/ components/ services/   plain content-management app (hash-routed)
+src/admin/
+  AdminApp.tsx pages/ components/ services/   administration area at /admin (hash-routed sections)
   types/galaxy.ts            domain types
   styles/index.css           Tailwind + theme tokens
 ```

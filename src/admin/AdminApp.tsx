@@ -10,6 +10,9 @@ import { Websites } from './pages/Websites'
 import { api, onUnauthorized, token } from './services/api'
 import type { User } from './services/types'
 
+/** Light, plain surface — the admin is a tool, not the galaxy. */
+const shell = 'min-h-screen bg-[#f5f6f8] font-sans text-[#16181d] [color-scheme:light] antialiased'
+
 const PAGES = ['overview', 'submissions', 'websites', 'universes', 'relationships', 'tags'] as const
 type Page = (typeof PAGES)[number]
 
@@ -19,11 +22,11 @@ const pageFromHash = (): Page => {
 }
 
 /**
- * The admin is a small hash-routed app: sign in, then manage content. It
- * does not replace the galaxy and does not share its aesthetic — it is a
- * plain, fast tool for staff.
+ * The administration area, served at `/admin` inside the same build as the
+ * galaxy but visually its own thing: a plain, fast content tool behind the
+ * single administrator's sign-in. Sections are hash-routed (`/admin#websites`).
  */
-export default function App() {
+export default function AdminApp() {
   // Without a stored token there is nothing to verify: straight to login.
   const [user, setUser] = useState<User | null | undefined>(() => (token.get() ? undefined : null))
   const [page, setPage] = useState<Page>(pageFromHash)
@@ -48,18 +51,18 @@ export default function App() {
     }
   }, [])
 
-  if (user === undefined) return <p className="p-6 text-sm text-gray-500">Loading…</p>
-  if (!user) return <Login onLogin={setUser} />
+  if (user === undefined) return <div className={shell}><p className="p-6 text-sm text-gray-500">Loading…</p></div>
+  if (!user) return <div className={shell}><Login onLogin={setUser} /></div>
 
   const go = (p: string) => {
     window.location.hash = p
   }
 
   return (
-    <div className="min-h-screen">
+    <div className={shell}>
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <span className="text-sm font-semibold tracking-wide">WebGalaxy Admin</span>
+          <a href="/" className="text-sm font-semibold tracking-wide" title="Back to the galaxy">WebGalaxy Admin</a>
           <nav aria-label="Sections" className="flex flex-wrap gap-1">
             {PAGES.map((p) => (
               <a
@@ -74,7 +77,7 @@ export default function App() {
           </nav>
           <div className="ml-auto flex items-center gap-3 text-sm text-gray-600">
             <span>
-              {user.email} · {user.role}
+              {user.email}
             </span>
             <button
               type="button"
@@ -92,10 +95,10 @@ export default function App() {
       <main className="mx-auto max-w-6xl px-4 py-6">
         {page === 'overview' && <Overview go={go} />}
         {page === 'submissions' && <Submissions />}
-        {page === 'websites' && <Websites user={user} />}
-        {page === 'universes' && <Universes user={user} />}
+        {page === 'websites' && <Websites />}
+        {page === 'universes' && <Universes />}
         {page === 'relationships' && <Relationships />}
-        {page === 'tags' && <Tags user={user} />}
+        {page === 'tags' && <Tags />}
       </main>
     </div>
   )

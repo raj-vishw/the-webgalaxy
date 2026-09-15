@@ -11,9 +11,8 @@ export interface AppContext {
   log: FastifyBaseLogger
 }
 
-/** Who performed an administrative action. */
+/** The administrator performing an action. There is exactly one administrator. */
 export interface Actor {
   id: string
   email: string
-  role: 'admin' | 'editor'
 }

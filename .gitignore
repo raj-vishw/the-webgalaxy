@@ -11,7 +11,6 @@ npm-debug.log*
 !.env.example
 backend/data/
 backend/dist/
-admin/dist/
 coverage/
 
 *.png

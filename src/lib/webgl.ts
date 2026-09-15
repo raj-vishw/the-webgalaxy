@@ -13,3 +13,6 @@ export function supportsWebGL(): boolean {
 export function wantsListView(): boolean {
   return new URLSearchParams(window.location.search).get('view') === 'list'
 }
+
+/** `/admin` is the administration area, not part of the galaxy. */
+export const isAdminPath = () => /^\/admin(\/|$)/.test(window.location.pathname)
