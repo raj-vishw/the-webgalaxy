@@ -1,0 +1,52 @@
+import { useCursor } from '@react-three/drei'
+import type { ThreeEvent } from '@react-three/fiber'
+import { useEffect, useState, type RefObject } from 'react'
+import { useGalaxyStore } from '../../../store/galaxyStore'
+import type { WebsiteDefinition } from '../../../types/galaxy'
+import type { CelestialFrameState } from '../celestial/celestialFrame'
+
+interface WebsiteInteractionProps {
+  website: WebsiteDefinition
+  /** Hit radius in the object's unit space (1 = the object's visual radius). */
+  radius: number
+  frame: RefObject<CelestialFrameState>
+}
+
+/** Pointer handling for one website object: hover → store, click → select. */
+export function WebsiteInteraction({ website, radius, frame }: WebsiteInteractionProps) {
+  const [hovered, setHovered] = useState(false)
+  const setHoveredWebsite = useGalaxyStore((s) => s.setHoveredWebsite)
+  const selectWebsite = useGalaxyStore((s) => s.selectWebsite)
+
+  useCursor(hovered)
+
+  const onPointerOver = (e: ThreeEvent<PointerEvent>) => {
+    // Objects that have faded out with distance must not react.
+    if (frame.current.visibility < 0.3) return
+    e.stopPropagation()
+    setHovered(true)
+    setHoveredWebsite(website.id)
+  }
+
+  const onPointerOut = () => {
+    setHovered(false)
+    useGalaxyStore.setState((s) => (s.hoveredWebsiteId === website.id ? { hoveredWebsiteId: null } : s))
+  }
+
+  const onClick = (e: ThreeEvent<MouseEvent>) => {
+    if (frame.current.visibility < 0.3) return
+    e.stopPropagation()
+    selectWebsite(website.id, website.universeId)
+  }
+
+  useEffect(() => () => {
+    useGalaxyStore.setState((s) => (s.hoveredWebsiteId === website.id ? { hoveredWebsiteId: null } : s))
+  }, [website.id])
+
+  return (
+    <mesh onPointerOver={onPointerOver} onPointerOut={onPointerOut} onClick={onClick}>
+      <sphereGeometry args={[radius, 10, 8]} />
+      <meshBasicMaterial colorWrite={false} depthWrite={false} />
+    </mesh>
+  )
+}
