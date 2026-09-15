@@ -1,7 +1,5 @@
 import { RELATIONSHIP_WEIGHT, SIGNAL_MAX } from '../data/recommendations'
-import { TRENDING_THRESHOLD, trends } from '../data/trends'
-import { universes } from '../data/universes'
-import { websites } from '../data/websites'
+import { getCatalog } from '../store/catalogStore'
 import type { RelationshipType, UniverseDefinition, WebsiteDefinition, WebsiteTrend } from '../types/galaxy'
 import { importanceFor } from '../utils/celestial'
 import { isDiscoverable } from '../utils/discovery'
@@ -61,10 +59,26 @@ export interface Recommendation {
 }
 
 const MAX_SEARCHES = 12
-const websiteById = new Map(websites.map((w) => [w.id, w]))
-const universeById = new Map(universes.map((u) => [u.id, u]))
-const trendById = new Map(trends.map((t) => [t.websiteId, t]))
-const allTags = new Set(websites.flatMap((w) => w.tags ?? []))
+
+/** Lookups over the catalogue's current data (rebuilt when it changes). */
+interface Index {
+  websites: WebsiteDefinition[]
+  websiteById: Map<string, WebsiteDefinition>
+  universeById: Map<string, UniverseDefinition>
+  allTags: Set<string>
+}
+let index: Index | null = null
+function catalogIndex(): Index {
+  const { websites, universes } = getCatalog()
+  if (index && index.websites === websites && index.universeById.size === universes.length) return index
+  index = {
+    websites,
+    websiteById: new Map(websites.map((w) => [w.id, w])),
+    universeById: new Map(universes.map((u) => [u.id, u])),
+    allTags: new Set(websites.flatMap((w) => w.tags ?? [])),
+  }
+  return index
+}
 
 export const emptySignals = (): SessionSignals => ({
   universeVisits: {},
@@ -93,7 +107,7 @@ export function recordSearch(signals: SessionSignals, query: string): SessionSig
   if (!q) return signals
   let tagWeights = signals.tagWeights
   // Search terms that name a tag count as interest in that tag.
-  for (const token of tokenize(q)) if (allTags.has(token)) tagWeights = bump(tagWeights, token, 0.5)
+  for (const token of tokenize(q)) if (catalogIndex().allTags.has(token)) tagWeights = bump(tagWeights, token, 0.5)
   return { ...signals, searches: [...signals.searches.filter((s) => s !== q), q].slice(-MAX_SEARCHES), tagWeights }
 }
 
@@ -103,38 +117,36 @@ export function recordDiscovery(signals: SessionSignals): SessionSignals {
 
 // ─── Trends ────────────────────────────────────────────────────────────────
 
+/** Trend snapshot of a website, from the catalogue record (static or admin-controlled — never live). */
 export function getTrend(websiteId: string): WebsiteTrend | undefined {
-  return trendById.get(websiteId)
+  const w = catalogIndex().websiteById.get(websiteId)
+  if (!w || (!w.isTrending && !w.isEmerging && !w.trendingScore)) return undefined
+  return { websiteId, trendingScore: w.trendingScore ?? 0, trendDirection: w.trendDirection ?? 'steady', emerging: w.isEmerging, asOf: '' }
 }
 
 export function isTrending(websiteId: string): boolean {
-  const trend = trendById.get(websiteId)
-  return !!trend && !trend.emerging && trend.trendingScore >= TRENDING_THRESHOLD
+  return !!catalogIndex().websiteById.get(websiteId)?.isTrending
 }
 
 export function isEmerging(websiteId: string): boolean {
-  return !!trendById.get(websiteId)?.emerging
+  return !!catalogIndex().websiteById.get(websiteId)?.isEmerging
 }
 
-const byTrendScore = (a: WebsiteTrend, b: WebsiteTrend) => b.trendingScore - a.trendingScore
+const byTrendScore = (a: WebsiteDefinition, b: WebsiteDefinition) => (b.trendingScore ?? 0) - (a.trendingScore ?? 0) || a.name.localeCompare(b.name)
 
-/** Trending websites (static demo data), strongest first. */
+/** Trending websites (static / admin-controlled data), strongest first. */
 export function getTrendingWebsites(limit = 6): WebsiteDefinition[] {
-  return trends
-    .filter((t) => !t.emerging && t.trendingScore >= TRENDING_THRESHOLD)
+  return catalogIndex()
+    .websites.filter((w) => w.isTrending)
     .sort(byTrendScore)
-    .map((t) => websiteById.get(t.websiteId))
-    .filter((w): w is WebsiteDefinition => !!w)
     .slice(0, limit)
 }
 
 /** Emerging websites: lower prominence, high discovery potential. */
 export function getEmergingWebsites(limit = 6): WebsiteDefinition[] {
-  return trends
-    .filter((t) => t.emerging)
+  return catalogIndex()
+    .websites.filter((w) => w.isEmerging)
     .sort(byTrendScore)
-    .map((t) => websiteById.get(t.websiteId))
-    .filter((w): w is WebsiteDefinition => !!w)
     .slice(0, limit)
 }
 
@@ -186,6 +198,7 @@ function tagSimilarity(candidate: WebsiteDefinition, profile: Map<string, number
 
 /** Score one candidate for the given context. Exposed for tests and tuning. */
 export function scoreWebsite(candidate: WebsiteDefinition, ctx: RecommendationContext): Recommendation {
+  const { websiteById, universeById } = catalogIndex()
   const current = ctx.currentWebsiteId ? websiteById.get(ctx.currentWebsiteId) : undefined
   const currentUniverseId = ctx.currentUniverseId ?? current?.universeId ?? null
   const universe = universeById.get(candidate.universeId)
@@ -251,13 +264,12 @@ export function scoreWebsite(candidate: WebsiteDefinition, ctx: RecommendationCo
   signals.push({ key: 'popularity', value: importance * SIGNAL_MAX.popularity, reason: universe ? `Popular in ${universe.name}` : undefined })
   if (current && candidate.objectType === current.objectType) signals.push({ key: 'objectType', value: SIGNAL_MAX.objectType })
 
-  // Static trend snapshot.
-  const trend = trendById.get(candidate.id)
-  if (trend) {
+  // Static / admin-controlled trend snapshot.
+  if (candidate.isTrending || candidate.isEmerging || candidate.trendingScore) {
     signals.push({
       key: 'trending',
-      value: trend.trendingScore * SIGNAL_MAX.trending,
-      reason: trend.emerging ? 'Emerging' : trend.trendingScore >= TRENDING_THRESHOLD ? 'Trending now' : undefined,
+      value: (candidate.trendingScore ?? 0) * SIGNAL_MAX.trending,
+      reason: candidate.isEmerging ? 'Emerging' : candidate.isTrending ? 'Trending now' : undefined,
     })
   }
 
@@ -290,8 +302,8 @@ const byScore = (a: Recommendation, b: Recommendation) =>
 export function getRecommendations(ctx: RecommendationContext, limit = 4, exclude: Iterable<string> = []): Recommendation[] {
   const skip = new Set(exclude)
   if (ctx.currentWebsiteId) skip.add(ctx.currentWebsiteId)
-  return websites
-    .filter((w) => !skip.has(w.id) && isDiscoverable(w))
+  return catalogIndex()
+    .websites.filter((w) => !skip.has(w.id) && isDiscoverable(w))
     .map((w) => scoreWebsite(w, ctx))
     .filter((r) => r.score > 0.05)
     .sort(byScore)
@@ -307,6 +319,7 @@ const keywordsOf = (w: WebsiteDefinition) => new Set(tokenize(w.description ?? '
  * session so "Explore Similar" means the same thing for everyone.
  */
 export function getSimilarWebsites(websiteId: string, limit = 5): Recommendation[] {
+  const { websiteById, websites } = catalogIndex()
   const source = websiteById.get(websiteId)
   if (!source) return []
   const ctx: RecommendationContext = {

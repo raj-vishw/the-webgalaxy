@@ -128,8 +128,8 @@ export const websiteService = {
     const { rows, total } = await websiteRepo.list(ctx.db, filters, query.page, query.limit)
     const pagination: Pagination = paginationFor(query.page, query.limit, total)
     if (query.fields === 'full') {
-      const data = await Promise.all(rows.map(async (r) => toFull(r, await relationshipRepo.forWebsite(ctx.db, r.id))))
-      return { data, pagination }
+      const relationships = await relationshipRepo.forWebsites(ctx.db, rows.map((r) => r.id))
+      return { data: rows.map((r) => toFull(r, relationships.get(r.id) ?? [])), pagination }
     }
     return { data: rows.map(toLight), pagination }
   },

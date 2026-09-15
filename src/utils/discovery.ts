@@ -8,9 +8,13 @@ import { urlFor } from './celestial'
  */
 export type DiscoveryMode = 'random' | 'universe' | 'similar' | 'alternative' | 'related' | 'trending' | 'emerging'
 
-/** Only well-formed entries are worth sending someone to. */
+/**
+ * Only well-formed entries are worth sending someone to. API records arrive
+ * without a description until selected, so a URL and a name are enough there.
+ */
 export function isDiscoverable(website: WebsiteDefinition): boolean {
-  return Boolean(urlFor(website) && website.description?.trim() && website.name.trim())
+  if (!urlFor(website) || !website.name.trim()) return false
+  return website.detailLoaded === false || website.remoteId ? true : Boolean(website.description?.trim())
 }
 
 function pick<T>(items: T[], exclude?: string, idOf?: (item: T) => string): T | null {

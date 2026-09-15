@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { universes } from '../../data/universes'
-import { websites } from '../../data/websites'
-import { DISCOVERY_MODE_LABEL, discoveryPool, pickDiscoveryTarget } from '../../services/discoveryService'
+import { useDiscovery } from '../../hooks/useDiscovery'
+import { DISCOVERY_MODE_LABEL, discoveryPool } from '../../services/discoveryService'
+import { getCatalog } from '../../store/catalogStore'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { scanSequence } from '../../utils/discovery'
 import { galaxyNavigation } from '../../utils/navigation'
@@ -11,6 +11,7 @@ const EMPTY_HOLD_MS = 1600
 
 function nameOf(kind: 'website' | 'universe', id: string | null): string {
   if (!id) return ''
+  const { websites, universes } = getCatalog()
   return kind === 'website' ? (websites.find((w) => w.id === id)?.name ?? '') : (universes.find((u) => u.id === id)?.name ?? '')
 }
 
@@ -21,41 +22,48 @@ function nameOf(kind: 'website' | 'universe', id: string | null): string {
  * scan is skipped and the destination is simply announced.
  */
 export function DiscoveryAnimation() {
-  const discovery = useGalaxyStore((s) => s.discovery)
+  const { discovery, endDiscovery, resolveTarget } = useDiscovery()
   const { phase, mode, targetId, candidateId, reason } = discovery
   const setDiscovery = useGalaxyStore((s) => s.setDiscovery)
-  const endDiscovery = useGalaxyStore((s) => s.endDiscovery)
   const isTransitioning = useGalaxyStore((s) => s.isTransitioning)
   const [reduced] = useState(() => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false)
   const kind = mode === 'universe' ? 'universe' : 'website'
 
-  // Scanning → found (or → nothing to find).
+  // Scanning → found (or → nothing to find). The scan starts at once from
+  // the local pool while the destination is resolved (possibly by the API);
+  // the sequence simply ends on whatever destination arrives.
   useEffect(() => {
     if (phase !== 'scanning') return
     const { recommendationContext } = useGalaxyStore.getState()
-    const target = pickDiscoveryTarget(mode, recommendationContext)
-    if (!target) {
-      setDiscovery({ phase: 'found', candidateId: null, targetId: null, reason: null })
-      return
-    }
     const pool = discoveryPool(mode, recommendationContext)
     // Ranked modes have small pools; borrow the wider random pool for the scan.
     const scanPool = pool.length >= 6 ? pool : discoveryPool('random', recommendationContext)
-    const sequence = reduced ? [{ id: target.id, delay: 0 }] : scanSequence(scanPool, target.id)
     const timers: number[] = []
+    let cancelled = false
     let elapsed = 0
-    for (const step of sequence) {
-      timers.push(window.setTimeout(() => setDiscovery({ candidateId: step.id }), elapsed))
-      elapsed += step.delay
+    if (!reduced) {
+      for (const step of scanSequence(scanPool, scanPool[0] ?? '')) {
+        timers.push(window.setTimeout(() => setDiscovery({ candidateId: step.id }), elapsed))
+        elapsed += step.delay
+      }
     }
-    timers.push(
-      window.setTimeout(
-        () => setDiscovery({ phase: 'found', candidateId: target.id, targetId: target.id, reason: target.reason }),
-        elapsed + 120,
-      ),
-    )
-    return () => timers.forEach((t) => window.clearTimeout(t))
-  }, [phase, mode, reduced, setDiscovery])
+    const started = performance.now()
+    void resolveTarget(mode).then((target) => {
+      if (cancelled) return
+      // Let the scan play out; a slow answer just extends it a little.
+      const wait = Math.max(0, elapsed + 120 - (performance.now() - started))
+      timers.push(
+        window.setTimeout(() => {
+          if (!target) setDiscovery({ phase: 'found', candidateId: null, targetId: null, reason: null })
+          else setDiscovery({ phase: 'found', candidateId: target.id, targetId: target.id, reason: target.reason })
+        }, wait),
+      )
+    })
+    return () => {
+      cancelled = true
+      timers.forEach((t) => window.clearTimeout(t))
+    }
+  }, [phase, mode, reduced, setDiscovery, resolveTarget])
 
   // Found → travel (or → idle when there was nothing to find).
   useEffect(() => {

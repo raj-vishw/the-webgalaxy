@@ -1,4 +1,4 @@
-import { universes } from '../../data/universes'
+import { useUniverses } from '../../store/catalogStore'
 import { getEmergingWebsites } from '../../services/recommendationService'
 import { accentFor } from '../../utils/celestial'
 import { galaxyNavigation } from '../../utils/navigation'
@@ -12,6 +12,7 @@ interface EmergingWebsitesProps {
 
 /** Lesser-known websites with discovery potential (static demo data). */
 export function EmergingWebsites({ limit = 3, onChoose }: EmergingWebsitesProps) {
+  const universes = useUniverses()
   const items = getEmergingWebsites(limit)
   return (
     <section aria-label="Emerging websites">

@@ -12,8 +12,8 @@ export function registerIntroTimeline(tl: IntroTimeline | null) {
   timeline = tl
 }
 
-/** Smoothly scrubs the intro to its end instead of hard-cutting. */
+/** Smoothly scrubs the flight to its end instead of hard-cutting. */
 export function skipIntro() {
   if (!timeline || timeline.progress() >= 1) return
-  timeline.tweenTo(timeline.duration(), { duration: 1.4, ease: 'power2.inOut' })
+  timeline.tweenTo(timeline.duration(), { duration: 0.9, ease: 'power2.inOut' })
 }

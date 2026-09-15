@@ -22,10 +22,3 @@ export function saveSession(value: unknown) {
   }
 }
 
-export function clearSession() {
-  try {
-    window.sessionStorage.removeItem(KEY)
-  } catch {
-    // ignore
-  }
-}

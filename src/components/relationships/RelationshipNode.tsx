@@ -1,4 +1,4 @@
-import { universes } from '../../data/universes'
+import { useUniverse } from '../../store/catalogStore'
 import type { WebsiteDefinition } from '../../types/galaxy'
 import { accentFor } from '../../utils/celestial'
 import { CelestialIcon } from '../search/CelestialIcon'
@@ -21,7 +21,7 @@ interface RelationshipNodeProps {
  * never a rank.
  */
 export function RelationshipNode({ website, caption, fromUniverseId, arrow, onSelect }: RelationshipNodeProps) {
-  const universe = universes.find((u) => u.id === website.universeId)
+  const universe = useUniverse(website.universeId)
   const elsewhere = fromUniverseId && website.universeId !== fromUniverseId ? universe?.name : null
   return (
     <li>

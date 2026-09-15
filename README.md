@@ -179,18 +179,59 @@ shaped so a backend/AI can replace it later without touching the UI.
   sets (`sceneMotion.relations`), and at most a handful of connection curves
   exist at any time
 
-Still no backend, auth, submissions, admin, machine learning or live data.
+## Phase 6 — Backend, database & dynamic platform
+
+The galaxy is now powered by a database through an API; the static Phase
+1–5 dataset was migrated into it and stays in the bundle only as the seed
+and the offline fallback. The 3D experience is unchanged and needs no login.
+
+```
+                 PostgreSQL (or embedded PGlite in dev)
+                          ↑
+                    Fastify API  ·  backend/
+                          ↑
+            ┌─────────────┴─────────────┐
+       WebGalaxy UI (src/)         Admin (admin/)
+```
+
+- **backend/** (Fastify 5 · TypeScript · Drizzle ORM · Zod · pino): `routes → controllers → services → repositories → db`. Public routes are read-only plus moderated submissions; `/api/admin/*` needs a JWT (roles `admin` / `editor`). Helmet, CORS allow-list, rate limits (global, search, discovery, submissions, login), 64 KB bodies, scrypt passwords, redacted logs, an `admin_audit_log`, `GET /health` and `/health/ready`. Full reference in [backend/API.md](backend/API.md).
+- **database**: `universes`, `websites` (slug + normalised URL unique, importance/popularity/trend fields, `is_active`, `position_seed`), `tags` + `website_tags`, `website_relationships` (check: no self link; unique per unordered pair + type), `submissions`, `admin_users`, `admin_audit_log`. Migrations in `backend/drizzle/` (`npm run db:migrate`), seed in `backend/scripts/seed.ts` (`npm run db:seed`, `db:reset`) reading `src/data/*.ts`. **No `parentUniverseId`, no nesting** — universes are peers by construction.
+- **PostgreSQL or embedded**: set `DATABASE_URL` for a real server (see `docker-compose.yml`); leave it unset and the API runs on PGlite (embedded PostgreSQL) under `backend/data/` — zero setup for development, in-memory for tests. Production refuses to start without `DATABASE_URL`, a real `JWT_SECRET` and a changed `ADMIN_PASSWORD`.
+- **frontend data layer** (`src/services/api.ts`, `universeApi`, `websiteApi`, `searchApi`, `discoveryApi`, `relationshipApi`, `submissionApi`; hooks `useUniverses`, `useWebsites`, `useSearch`, `useDiscovery`): components never call `fetch`. `src/store/catalogStore.ts` renders instantly from the last cached load (localStorage) or the bundled dataset, then loads **progressively** — universes → lightweight website records → relationships — swapping each layer in; full records (description…) are fetched when a website is selected. Positions stay deterministic (slug-seeded), so nothing rearranges when data reloads.
+- **graceful failure**: if the API is unreachable the scene keeps rendering from cached/bundled data with a quiet "Unable to load some galaxy data — Retry" notice and cached data clearly dated; search falls back to the local index; submissions explain they need the API.
+- **search & discovery** go through the API (`/api/search`, `/api/discovery/*`) with the local index answering instantly and the ranked backend answer replacing it; the recommendation logic stays local behind a swappable `RecommendationProvider` (`src/services/recommendationProvider.ts`).
+- **+ Add** (`A`): public submission form with live duplicate detection ("This website is already in the WebGalaxy — Travel to …"), honeypot, URL validation on both sides; submissions are `pending` until reviewed.
+- **admin/** (separate Vite app, plain UI, `http://localhost:5174`): sign in, overview, submissions (approve with universe/type/importance overrides, or reject with a reason), websites (create/edit/disable/delete, tags, trending & emerging switches, popularity), universes (edit metadata & visual configuration, activate/deactivate, create), relationships (create/remove with self/duplicate refusal), tags. Approving a submission publishes the website; the public galaxy picks it up on its next load or when the tab regains focus.
+- **tests**: `npm run test:api` — 29 backend tests on an in-memory database (universes, websites, pagination, validation, search, discovery, relationships, submissions & moderation, authentication, authorization, audit, URL/password utilities); `npm run test:web` — 15 vitest tests (API client, mappers, catalog fallback/progressive load/retry).
+
+### Running Phase 6
+
+```sh
+npm install
+cp backend/.env.example backend/.env      # optional; defaults run on embedded PostgreSQL
+npm run db:seed                            # migrate + seed (universes, websites, tags, relationships, trends, first admin)
+npm run dev                                # web (5173) + API (4000)
+npm run dev:admin                          # admin (5174) — sign in with ADMIN_EMAIL / ADMIN_PASSWORD
+npm test                                   # frontend + backend tests
+```
+
+With Docker: `JWT_SECRET=… ADMIN_PASSWORD=… docker compose up` starts PostgreSQL and the API; point `DATABASE_URL` at it for `npm run db:seed`. Frontend, API and database deploy independently — the web and admin builds are static (`VITE_API_URL` selects the API), the API is a Node process or the `backend/Dockerfile` image.
+
+Still no public user accounts, automated popularity signals or machine learning.
 
 ## Stack
 
 React 19 · TypeScript · Vite · Three.js · @react-three/fiber · @react-three/drei ·
-@react-three/postprocessing · Tailwind CSS 4 · Zustand · GSAP
+@react-three/postprocessing · Tailwind CSS 4 · Zustand · GSAP · Fastify · Drizzle ORM ·
+PostgreSQL (PGlite in development) · Zod · Vitest
 
 ```sh
 npm install
-npm run dev      # http://localhost:5173
-npm run build    # type-check + production bundle
+npm run dev        # web (http://localhost:5173) + API (http://localhost:4000)
+npm run dev:all    # + admin (http://localhost:5174)
+npm run build:all  # web, API and admin production builds
 npm run lint
+npm test
 ```
 
 ## Structure
@@ -273,8 +314,27 @@ src/
     useQualityProfile.ts     device tier → render budget
     useParallax.ts           camera-space pointer parallax for a group
     useKeyboardShortcuts.ts  / ⌘K F E D M Esc
-  store/galaxyStore.ts       Zustand: view mode, ids, camera target/previous pose, overlay, search query, filters, discovery,
+  services/
+    api.ts                   HTTP client: base URL, envelope, timeouts, ApiError
+    api/{types,mappers}.ts   wire shapes → domain models (slug = domain id)
+    universeApi.ts websiteApi.ts searchApi.ts discoveryApi.ts relationshipApi.ts submissionApi.ts
+    recommendationProvider.ts  swappable RecommendationService boundary (local scorer by default)
+  hooks/useUniverses.ts useWebsites.ts useSearch.ts useDiscovery.ts
+  components/data/DataStatus.tsx        loading / failure / cached-data notice with Retry
+  components/submission/SubmitWebsiteForm.tsx  "+ Add to the WebGalaxy"
+  store/catalogStore.ts      universes, websites, relationships from API → cache → bundled fallback; progressive load; details on demand
+  store/galaxyStore.ts       Zustand: view mode, ids, camera target/previous pose, overlay, search query/results, filters, discovery,
                              minimap, exploration history, session signals, recommendations, visible relationships, path, highlight
+backend/
+  src/server.ts app.ts       entry + Fastify factory (helmet, CORS, JWT, rate limits, error envelope)
+  src/config/env.ts          validated environment
+  src/db/{schema,client,migrate}.ts   Drizzle schema, pg/PGlite handle, migrator     drizzle/   SQL migrations
+  src/routes/ controllers/ services/ repositories/ schemas/ middleware/ utils/
+  scripts/seed.ts            migrates src/data/*.ts into the database
+  test/                      node:test suites on in-memory PostgreSQL
+  API.md  Dockerfile  .env.example
+admin/
+  src/App.tsx pages/ components/ services/   plain content-management app (hash-routed)
   types/galaxy.ts            domain types
   styles/index.css           Tailwind + theme tokens
 ```

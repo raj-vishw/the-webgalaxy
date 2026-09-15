@@ -1,7 +1,6 @@
 import { Vector3 } from 'three'
-import { universes } from '../../../data/universes'
-import { websites, websitesInUniverse } from '../../../data/websites'
 import { celestialRegistry } from '../../../lib/celestialRegistry'
+import { getCatalog, websitesInUniverse } from '../../../store/catalogStore'
 import type { ViewMode, WebsiteDefinition } from '../../../types/galaxy'
 import {
   approachDirection,
@@ -84,7 +83,7 @@ export function resolveDestination(ctx: TargetingContext): CameraDestination | n
         position: () => destinationPosition.set(...restorePosition),
       }
     }
-    const universe = universes.find((u) => u.id === activeUniverseId)
+    const universe = getCatalog().universes.find((u) => u.id === activeUniverseId)
     const object = celestialRegistry.get(activeUniverseId)
     if (!universe || !object) return null
     const distance = universeViewDistance(universe)
@@ -96,7 +95,7 @@ export function resolveDestination(ctx: TargetingContext): CameraDestination | n
   }
 
   if (viewMode === 'website' && selectedWebsiteId) {
-    const website = websites.find((w) => w.id === selectedWebsiteId)
+    const website = getCatalog().websites.find((w) => w.id === selectedWebsiteId)
     const object = celestialRegistry.get(selectedWebsiteId)
     if (!website || !object) return null
     const distance = websiteViewDistance(website)
@@ -118,7 +117,7 @@ export function resolveDestination(ctx: TargetingContext): CameraDestination | n
     const arrivingFromOutside = previousMode === 'galaxy' || ctx.previousUniverseId !== website.universeId
     let waypoint: CameraDestination['waypoint']
     if (arrivingFromOutside) {
-      const universe = universes.find((u) => u.id === website.universeId)
+      const universe = getCatalog().universes.find((u) => u.id === website.universeId)
       const universeObject = celestialRegistry.get(website.universeId)
       if (universe && universeObject) {
         universeObject.getWorldPosition(universeCentre)

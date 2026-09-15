@@ -1,4 +1,4 @@
-import { websites } from '../../data/websites'
+import { useWebsite } from '../../store/catalogStore'
 import { DISCOVERY_MODES } from '../../services/discoveryService'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { eyebrow, focusRing, glassPanel } from '../ui/panel'
@@ -14,7 +14,7 @@ export function DiscoveryMenu() {
   const startDiscovery = useGalaxyStore((s) => s.startDiscovery)
   const selectedWebsiteId = useGalaxyStore((s) => s.selectedWebsiteId)
   const lastMode = useGalaxyStore((s) => s.activeDiscoveryMode)
-  const current = websites.find((w) => w.id === selectedWebsiteId)
+  const current = useWebsite(selectedWebsiteId)
 
   return (
     <section

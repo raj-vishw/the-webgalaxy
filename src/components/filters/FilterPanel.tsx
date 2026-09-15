@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { websites } from '../../data/websites'
+import { useWebsites } from '../../store/catalogStore'
 import { discoveryFilterContext } from '../../services/discoveryService'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { applyFilters, hasActiveFilters } from '../../utils/filtering'
@@ -19,12 +19,13 @@ export function FilterPanel() {
   const clearFilters = useGalaxyStore((s) => s.clearFilters)
   const closeOverlay = useGalaxyStore((s) => s.closeOverlay)
   const selectedWebsiteId = useGalaxyStore((s) => s.selectedWebsiteId)
+  const websites = useWebsites()
   const active = hasActiveFilters(filters)
   const count = useMemo(() => {
     if (!active) return websites.length
     const context = filters.discovery ? discoveryFilterContext(selectedWebsiteId) : undefined
     return applyFilters(websites, filters, context).length
-  }, [active, filters, selectedWebsiteId])
+  }, [active, filters, selectedWebsiteId, websites])
 
   return (
     <section

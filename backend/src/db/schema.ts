@@ -1,7 +1,8 @@
-import { sql } from 'drizzle-orm'
+import { sql, type SQL } from 'drizzle-orm'
 import {
   boolean,
   check,
+  customType,
   index,
   integer,
   jsonb,
@@ -32,6 +33,9 @@ export const TREND_DIRECTIONS = ['up', 'steady', 'down'] as const
 
 const inList = (column: string, values: readonly string[]) =>
   sql.raw(`${column} IN (${values.map((v) => `'${v}'`).join(', ')})`)
+
+/** PostgreSQL full-text vector (generated column). */
+const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' })
 
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -100,10 +104,19 @@ export const websites = pgTable(
     orbitAnchorId: uuid('orbit_anchor_id').references((): any => websites.id, { onDelete: 'set null' }),
     /** Deterministic seed for procedural placement; derived from the slug on insert. */
     positionSeed: integer('position_seed').notNull().default(0),
+    /**
+     * Full-text index over name + description, maintained by PostgreSQL.
+     * Search uses it alongside ILIKE so ranking stays fast as the galaxy grows.
+     */
+    searchVector: tsvector('search_vector').generatedAlwaysAs(
+      (): SQL => sql`to_tsvector('simple', coalesce(${websites.name}, '') || ' ' || coalesce(${websites.description}, ''))`,
+    ),
     ...timestamps,
   },
   (t) => [
     uniqueIndex('websites_slug_idx').on(t.slug),
+    index('websites_universe_active_idx').on(t.universeId, t.isActive),
+    index('websites_search_idx').using('gin', t.searchVector),
     uniqueIndex('websites_url_normalized_idx').on(t.urlNormalized),
     index('websites_universe_idx').on(t.universeId),
     index('websites_trending_idx').on(t.isTrending),

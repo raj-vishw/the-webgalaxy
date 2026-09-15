@@ -7,7 +7,7 @@ import { tagRepo } from './tagRepo.js'
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
 
 /** A website with the joined identifiers the API exposes. */
-export interface WebsiteRecord extends WebsiteRow {
+export interface WebsiteRecord extends WebsiteApiRow {
   universeSlug: string
   universeName: string
   anchorSlug: string | null
@@ -27,10 +27,13 @@ export interface WebsiteFilters {
 
 const anchor = alias(websites, 'anchor')
 
+const { searchVector: _searchVector, ...websiteColumns } = websites
+type WebsiteApiRow = Omit<WebsiteRow, 'searchVector'>
+
 const baseSelect = (db: Database) =>
   db
     .select({
-      website: websites,
+      website: websiteColumns,
       universeSlug: universes.slug,
       universeName: universes.name,
       anchorSlug: anchor.slug,
@@ -39,7 +42,7 @@ const baseSelect = (db: Database) =>
     .innerJoin(universes, eq(universes.id, websites.universeId))
     .leftJoin(anchor, eq(anchor.id, websites.orbitAnchorId))
 
-type Joined = { website: WebsiteRow; universeSlug: string; universeName: string; anchorSlug: string | null }
+type Joined = { website: WebsiteApiRow; universeSlug: string; universeName: string; anchorSlug: string | null }
 
 async function attachTags(db: Database, rows: Joined[]): Promise<WebsiteRecord[]> {
   const tagMap = await tagRepo.forWebsites(
@@ -76,6 +79,8 @@ function whereFor(f: WebsiteFilters): SQL | undefined {
         ilike(websites.description, like),
         ilike(universes.name, like),
         sql`exists (select 1 from ${websiteTags} join ${tags} on ${tags.id} = ${websiteTags.tagId} where ${websiteTags.websiteId} = ${websites.id} and ${tags.slug} ilike ${like})`,
+        // Full-text (stemmed, indexed) — catches word matches ILIKE misses in long descriptions.
+        sql`${websites.searchVector} @@ plainto_tsquery('simple', ${f.q})`,
       ),
     )
   }

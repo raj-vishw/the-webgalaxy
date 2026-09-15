@@ -56,8 +56,10 @@ export function CameraTransition({ controls, overview, reducedMotion }: CameraTr
     previousModeRef.current = viewMode
     previousUniverseRef.current = activeUniverseId
 
-    // Remember where we came from only when entering focus from free exploration.
-    if (viewMode === 'website' && previousMode !== 'website') {
+    // Remember where we came from only when entering focus from free
+    // exploration *inside the same universe*; a focus reached from the
+    // overview or from another universe returns to that universe's view.
+    if (viewMode === 'website' && previousMode === 'universe' && previousUniverseId === activeUniverseId) {
       store.rememberCameraPose(
         [camera.position.x, camera.position.y, camera.position.z],
         [orbit.target.x, orbit.target.y, orbit.target.z],

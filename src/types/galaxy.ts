@@ -54,6 +54,9 @@ export interface UniverseDefinition {
   seed: number
   layout: UniverseLayout
   metadata?: Record<string, unknown>
+  /** Backend identifier when the universe came from the API (the `id` is its slug). */
+  remoteId?: string
+  websiteCount?: number
 }
 
 /** The kind of celestial object a website is rendered as. */
@@ -96,6 +99,17 @@ export interface WebsiteDefinition {
    * link between equals — never ownership, containment or rank.
    */
   relationships?: WebsiteRelationshipRef[]
+  /** Backend identifier when the website came from the API (the `id` is its slug). */
+  remoteId?: string
+  /** 0–100 popularity, manually configured for now. */
+  popularity?: number
+  /** Static/admin-controlled trend snapshot (not live traffic). */
+  trendingScore?: number
+  trendDirection?: TrendDirection
+  isTrending?: boolean
+  isEmerging?: boolean
+  /** True once the full record (description etc.) has been fetched from the API. */
+  detailLoaded?: boolean
 }
 
 /**
@@ -156,7 +170,12 @@ export interface UniverseAffinity {
   reason: string
 }
 
-export type IntroPhase = 'idle' | 'playing' | 'complete'
+/**
+ * Entry sequence: loading (scene + first data) → landing (title over the
+ * visible galaxy) → playing (cinematic flight) → onboarding (first visit
+ * only) → complete (control handed over).
+ */
+export type IntroPhase = 'loading' | 'landing' | 'playing' | 'onboarding' | 'complete'
 
 /**
  * Which level of The WebGalaxy the camera is currently exploring. This is

@@ -109,7 +109,3 @@ export const websites: WebsiteDefinition[] = [
   { id: 'letterboxd', name: 'Letterboxd', url: 'https://letterboxd.com', universeId: 'entertainment', objectType: 'comet', importance: 62, description: 'Social film diary.', accent: '#40bcf4', glyph: 'Lb', tags: ['community'] },
 ]
 
-/** Websites grouped by the universe they live in. */
-export function websitesInUniverse(universeId: string): WebsiteDefinition[] {
-  return websites.filter((w) => w.universeId === universeId)
-}

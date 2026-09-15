@@ -1,8 +1,8 @@
 import gsap from 'gsap'
 import { useEffect, useMemo } from 'react'
-import { websitesInUniverse } from '../../../data/websites'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import { sceneMotion } from '../../../lib/sceneMotion'
+import { useWebsitesInUniverse } from '../../../store/catalogStore'
 import { useGalaxyStore } from '../../../store/galaxyStore'
 import type { UniverseDefinition } from '../../../types/galaxy'
 import { generateOrbits } from '../../../utils/generateOrbits'
@@ -25,7 +25,7 @@ const ENTRY_DURATION = 4.4
 export function UniverseWebsites({ universe, profile, pixelRatio }: UniverseWebsitesProps) {
   const active = useGalaxyStore((s) => s.activeUniverseId === universe.id)
 
-  const websites = useMemo(() => websitesInUniverse(universe.id), [universe.id])
+  const websites = useWebsitesInUniverse(universe.id)
   const orbits = useMemo(() => {
     const positions = generatePositions(universe, websites)
     return generateOrbits(universe, websites, positions)

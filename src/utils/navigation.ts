@@ -1,5 +1,4 @@
-import { universes } from '../data/universes'
-import { websites } from '../data/websites'
+import { getCatalog } from '../store/catalogStore'
 import { useGalaxyStore } from '../store/galaxyStore'
 import { interactionEvents } from './interaction'
 
@@ -10,12 +9,12 @@ import { interactionEvents } from './interaction'
  */
 export const galaxyNavigation = {
   focusUniverse(universeId: string) {
-    if (!universes.some((u) => u.id === universeId)) return false
+    if (!getCatalog().universes.some((u) => u.id === universeId)) return false
     useGalaxyStore.getState().enterUniverse(universeId)
     return true
   },
   focusWebsite(websiteId: string) {
-    const website = websites.find((w) => w.id === websiteId)
+    const website = getCatalog().websites.find((w) => w.id === websiteId)
     if (!website) return false
     useGalaxyStore.getState().selectWebsite(website.id, website.universeId)
     return true
@@ -60,6 +59,7 @@ export function parseLocationPath(path: string): { universeId?: string; websiteI
 
 export function locationTitle(): string {
   const { viewMode, activeUniverseId, selectedWebsiteId } = useGalaxyStore.getState()
+  const { universes, websites } = getCatalog()
   const universe = universes.find((u) => u.id === activeUniverseId)
   const website = websites.find((w) => w.id === selectedWebsiteId)
   if (viewMode === 'website' && website) return `${website.name} · The WebGalaxy`

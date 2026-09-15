@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { universes } from '../../data/universes'
-import { websites } from '../../data/websites'
+import { useCatalogStore, useUniverse } from '../../store/catalogStore'
 import { HIGHLIGHT_LABEL, type HighlightKind } from '../../services/discoveryService'
 import { getTrend, isEmerging, isTrending } from '../../services/recommendationService'
 import { hasRelationships } from '../../services/relationshipService'
@@ -40,11 +39,12 @@ export function WebsiteInfoPanel() {
   const setHighlight = useGalaxyStore((s) => s.setHighlight)
   const recommendations = useGalaxyStore((s) => s.recommendations)
   // Keep the last website while fading out so the panel doesn't blank mid-transition.
-  const current = websites.find((w) => w.id === selectedWebsiteId) ?? null
+  const current = useCatalogStore((s) => (selectedWebsiteId ? s.websites.find((w) => w.id === selectedWebsiteId) ?? null : null))
+  const detailStatus = useCatalogStore((s) => (selectedWebsiteId ? s.detailStatus[selectedWebsiteId] : undefined))
   const [shown, setShown] = useState<WebsiteDefinition | null>(current)
   if (current && current !== shown) setShown(current)
   const website = current ?? shown
-  const universe = website ? universes.find((u) => u.id === website.universeId) : undefined
+  const universe = useUniverse(website?.universeId ?? null)
   const visible = !!current
 
   const [openingId, setOpeningId] = useState<string | null>(null)
@@ -135,8 +135,11 @@ export function WebsiteInfoPanel() {
           </div>
         </div>
 
-        <p className="mt-5 font-sans text-[13px] leading-6 text-space-100/85">
-          {website?.description?.trim() || 'No description has been charted for this world yet.'}
+        <p className="mt-5 font-sans text-[13px] leading-6 text-space-100/85" aria-busy={detailStatus === 'loading'}>
+          {website?.description?.trim() ||
+            (detailStatus === 'loading' || (website && !website.detailLoaded && detailStatus !== 'error')
+              ? 'Charting this world…'
+              : 'No description has been charted for this world yet.')}
         </p>
 
         <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[10.5px] tracking-[0.16em] uppercase text-space-300/75">

@@ -1,6 +1,6 @@
 import { and, asc, count, eq, or, sql } from 'drizzle-orm'
 import type { Database } from '../db/client.js'
-import { universes, websites, type UniverseRow } from '../db/schema.js'
+import { universes, type UniverseRow } from '../db/schema.js'
 
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
 
@@ -13,7 +13,9 @@ export const universeRepo = {
     const rows = await db
       .select({
         universe: universes,
-        websiteCount: sql<number>`(select count(*) from ${websites} where ${websites.universeId} = ${universes.id} and ${websites.isActive} = true)`,
+        // Drizzle drops table qualifiers in single-table selects, so the
+        // correlated subquery is spelled out with explicit aliases.
+        websiteCount: sql<number>`(select count(*) from websites w where w.universe_id = universes.id and w.is_active = true)`,
       })
       .from(universes)
       .where(includeInactive ? undefined : eq(universes.isActive, true))

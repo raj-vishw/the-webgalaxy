@@ -1,5 +1,4 @@
-import { universes } from '../../data/universes'
-import { websites } from '../../data/websites'
+import { useUniverse, useWebsite } from '../../store/catalogStore'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { galaxyNavigation } from '../../utils/navigation'
 
@@ -17,8 +16,8 @@ export function LocationIndicator() {
   const introDone = useGalaxyStore((s) => s.introPhase === 'complete')
   const activeUniverseId = useGalaxyStore((s) => s.activeUniverseId)
   const selectedWebsiteId = useGalaxyStore((s) => s.selectedWebsiteId)
-  const universe = universes.find((u) => u.id === activeUniverseId)
-  const website = websites.find((w) => w.id === selectedWebsiteId)
+  const universe = useUniverse(activeUniverseId)
+  const website = useWebsite(selectedWebsiteId)
   const visible = introDone
 
   return (

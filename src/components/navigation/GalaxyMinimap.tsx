@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { universes } from '../../data/universes'
-import { websites } from '../../data/websites'
+import { useCatalogStore } from '../../store/catalogStore'
 import { sceneMotion } from '../../lib/sceneMotion'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { galaxyNavigation } from '../../utils/navigation'
@@ -28,6 +27,8 @@ export function GalaxyMinimap() {
   const introDone = useGalaxyStore((s) => s.introPhase === 'complete')
   const activeUniverseId = useGalaxyStore((s) => s.activeUniverseId)
   const selectedWebsiteId = useGalaxyStore((s) => s.selectedWebsiteId)
+  const universes = useCatalogStore((s) => s.universes)
+  const websites = useCatalogStore((s) => s.websites)
   // The info panel owns the right edge while a website is focused; the map steps aside.
   const aside = useGalaxyStore((s) => s.viewMode === 'website')
   const [cam, setCam] = useState(() => ({ ...sceneMotion.camera }))

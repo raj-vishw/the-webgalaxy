@@ -1,18 +1,16 @@
 import { universeAffinities } from '../data/recommendations'
-import { relationships as relationshipData } from '../data/relationships'
-import { universes } from '../data/universes'
-import { websites } from '../data/websites'
+import { getCatalog } from '../store/catalogStore'
 import type { RelationshipType, UniverseDefinition, WebsiteDefinition, WebsiteRelationship } from '../types/galaxy'
 import { importanceFor } from '../utils/celestial'
 
 /**
  * Relationship service — the only place that reads the raw relationship
- * dataset. It merges inline (`website.relationships`) and shared
- * (`data/relationships.ts`) declarations, validates them, mirrors the
+ * list. It takes the catalogue's current websites and relationships (API,
+ * cache or bundled data — the store decides), validates them, mirrors the
  * symmetrical ones and answers questions like "what is related to X?".
  *
- * Everything here is deterministic and synchronous; a future backend can
- * replace the `build()` step without changing the query functions' shapes.
+ * The graph is rebuilt lazily whenever the catalogue changes; every query
+ * function keeps its shape, so the UI never notices where the data came from.
  *
  * Conceptual rule: a relationship connects two independent websites. Nothing
  * in this service orders, nests or ranks them.
@@ -73,9 +71,6 @@ export interface ValidationResult {
   issues: RelationshipIssue[]
 }
 
-const websiteById = new Map(websites.map((w) => [w.id, w]))
-const universeById = new Map(universes.map((u) => [u.id, u]))
-
 /** Key that treats symmetrical relationships as one, whichever way they were declared. */
 function keyOf(r: WebsiteRelationship): string {
   if (r.directed) return `${r.source}>${r.target}:${r.type}`
@@ -109,27 +104,31 @@ export function validateRelationships(input: WebsiteRelationship[], knownIds: Se
   return { valid, issues }
 }
 
-function collectDeclared(): WebsiteRelationship[] {
-  const inline: WebsiteRelationship[] = []
-  for (const website of websites) {
-    for (const ref of website.relationships ?? []) inline.push({ source: website.id, ...ref })
-  }
-  return [...inline, ...relationshipData]
+interface Graph {
+  websites: WebsiteDefinition[]
+  relationships: WebsiteRelationship[]
+  universes: UniverseDefinition[]
+  websiteById: Map<string, WebsiteDefinition>
+  universeById: Map<string, UniverseDefinition>
+  adjacency: Map<string, ResolvedRelationship[]>
+  validation: ValidationResult
 }
 
-/** Adjacency: website id → relationships seen from that website. */
-const graph = new Map<string, ResolvedRelationship[]>()
-let validation: ValidationResult = { valid: [], issues: [] }
+let graph: Graph | null = null
 
-function build() {
-  graph.clear()
-  validation = validateRelationships(collectDeclared(), new Set(websiteById.keys()))
+/** Builds (or reuses) the graph for the catalogue's current data. */
+function currentGraph(): Graph {
+  const { websites, relationships, universes } = getCatalog()
+  if (graph && graph.websites === websites && graph.relationships === relationships && graph.universes === universes) return graph
+  const websiteById = new Map(websites.map((w) => [w.id, w]))
+  const validation = validateRelationships(relationships, new Set(websiteById.keys()))
+  const adjacency = new Map<string, ResolvedRelationship[]>()
   const add = (from: string, to: string, r: WebsiteRelationship, outgoing: boolean) => {
     const website = websiteById.get(to)
     if (!website) return
-    const list = graph.get(from) ?? []
+    const list = adjacency.get(from) ?? []
     list.push({ website, type: r.type, directed: !!r.directed, outgoing, note: r.note, sourceId: r.source, targetId: r.target })
-    graph.set(from, list)
+    adjacency.set(from, list)
   }
   for (const r of validation.valid) {
     add(r.source, r.target, r, true)
@@ -143,9 +142,9 @@ function build() {
       validation.issues.map((i) => `${i.relationship.source} → ${i.relationship.target} (${i.reason})`).join(', '),
     )
   }
+  graph = { websites, relationships, universes, websiteById, universeById: new Map(universes.map((u) => [u.id, u])), adjacency, validation }
+  return graph
 }
-
-build()
 
 function rank(a: ResolvedRelationship, b: ResolvedRelationship): number {
   return (
@@ -157,7 +156,7 @@ function rank(a: ResolvedRelationship, b: ResolvedRelationship): number {
 
 /** Every valid relationship of a website, most relevant first. */
 export function getRelationships(websiteId: string): ResolvedRelationship[] {
-  return [...(graph.get(websiteId) ?? [])].sort(rank)
+  return [...(currentGraph().adjacency.get(websiteId) ?? [])].sort(rank)
 }
 
 export function getRelationshipsOfType(websiteId: string, types: RelationshipType[]): ResolvedRelationship[] {
@@ -203,12 +202,12 @@ export function getIntegrations(websiteId: string): ResolvedRelationship[] {
 
 /** The explicit relationship between two websites, if any (either direction). */
 export function getRelationshipBetween(a: string, b: string): ResolvedRelationship | null {
-  return graph.get(a)?.find((r) => r.website.id === b) ?? null
+  return currentGraph().adjacency.get(a)?.find((r) => r.website.id === b) ?? null
 }
 
 /** Whether a website has at least one relationship of the given kinds. */
 export function hasRelationships(websiteId: string, types?: RelationshipType[]): boolean {
-  const list = graph.get(websiteId)
+  const list = currentGraph().adjacency.get(websiteId)
   if (!list?.length) return false
   return types ? list.some((r) => types.includes(r.type)) : true
 }
@@ -220,7 +219,7 @@ export function getRelatedUniverses(universeId: string): { universe: UniverseDef
     const [a, b] = affinity.universeIds
     const other = a === universeId ? b : b === universeId ? a : null
     if (!other) continue
-    const universe = universeById.get(other)
+    const universe = currentGraph().universeById.get(other)
     if (universe && universe.id !== universeId) out.push({ universe, reason: affinity.reason })
   }
   return out
@@ -230,12 +229,4 @@ export function areUniversesRelated(a: string, b: string): boolean {
   return universeAffinities.some(({ universeIds: [x, y] }) => (x === a && y === b) || (x === b && y === a))
 }
 
-/** Validation report for the loaded dataset (dev tooling, tests). */
-export function getRelationshipValidation(): ValidationResult {
-  return validation
-}
 
-/** Number of valid relationships in the graph (each counted once). */
-export function relationshipCount(): number {
-  return validation.valid.length
-}

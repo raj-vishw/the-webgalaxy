@@ -1,11 +1,10 @@
-import { universes } from '../data/universes'
-import { websites } from '../data/websites'
+import { getCatalog } from '../store/catalogStore'
 import type { WebsiteDefinition } from '../types/galaxy'
 import { isDiscoverable, pickRandomUniverse, pickRandomWebsite, type DiscoveryMode } from '../utils/discovery'
 import type { SearchResults, WebsiteMatch } from '../utils/search'
+import { getRecommendationProvider } from './recommendationProvider'
 import {
   getEmergingWebsites,
-  getRecommendations,
   getSimilarWebsites,
   getTrendingWebsites,
   isEmerging,
@@ -72,7 +71,7 @@ const toRecommendation = (r: ResolvedRelationship, sourceName: string): Recommen
  * is computed.
  */
 export function getHighlightSet(kind: HighlightKind, websiteId: string, limit = 6): Recommendation[] {
-  const source = websites.find((w) => w.id === websiteId)
+  const source = getCatalog().websites.find((w) => w.id === websiteId)
   if (!source) return []
   if (kind === 'similar') return getSimilarWebsites(websiteId, limit)
   const list = kind === 'alternative' ? getAlternatives(websiteId) : getIntegrations(websiteId)
@@ -82,6 +81,7 @@ export function getHighlightSet(kind: HighlightKind, websiteId: string, limit = 
 /** Candidate ids a discovery mode chooses from (used for the scanning animation too). */
 export function discoveryPool(mode: DiscoveryMode, ctx: RecommendationContext): string[] {
   const current = ctx.currentWebsiteId
+  const { universes, websites } = getCatalog()
   switch (mode) {
     case 'universe':
       return universes.map((u) => u.id)
@@ -113,6 +113,7 @@ export interface DiscoveryTarget {
  */
 export function pickDiscoveryTarget(mode: DiscoveryMode, ctx: RecommendationContext): DiscoveryTarget | null {
   const viewed = new Set(ctx.history.filter((e) => e.kind === 'website').map((e) => e.id))
+  const { universes, websites } = getCatalog()
   if (mode === 'universe') {
     const universe = pickRandomUniverse(universes, ctx.currentUniverseId ?? undefined)
     return universe ? { kind: 'universe', id: universe.id, reason: 'A random region' } : null
@@ -133,8 +134,8 @@ export function pickDiscoveryTarget(mode: DiscoveryMode, ctx: RecommendationCont
 }
 
 /** "You may also explore" for the current context, skipping what is on screen already. */
-export function recommendationsFor(ctx: RecommendationContext, limit = 3, exclude: Iterable<string> = []): Recommendation[] {
-  return getRecommendations(ctx, limit, exclude)
+export function recommendationsFor(ctx: RecommendationContext, limit = 3, exclude: Iterable<string> = []): Recommendation[] | Promise<Recommendation[]> {
+  return getRecommendationProvider().recommend(ctx, limit, exclude)
 }
 
 // ─── Search & filter integration ───────────────────────────────────────────
@@ -157,6 +158,7 @@ export function expandSearch(results: SearchResults, query: string): SearchExpan
   const confident = !!top && q.length >= 2 && top.website.name.toLowerCase().startsWith(q)
   if (!top || !confident) return { anchor: null, related: [], alternatives: [] }
   const shown = new Set(results.websites.map((m) => m.website.id))
+  const universes = getCatalog().universes
   const toMatch = (r: ResolvedRelationship): WebsiteMatch => ({
     kind: 'website',
     website: r.website,
@@ -186,6 +188,7 @@ export interface DiscoveryFilterContext {
  * has such connections at all.
  */
 export function discoveryFilterContext(selectedWebsiteId: string | null): DiscoveryFilterContext {
+  const { websites } = getCatalog()
   const related = new Set<string>()
   const alternatives = new Set<string>()
   if (selectedWebsiteId) {
@@ -205,4 +208,34 @@ export function discoveryFilterContext(selectedWebsiteId: string | null): Discov
     related,
     alternatives,
   }
+}
+
+/**
+ * Backend-aware target choice: random / trending / emerging come from the
+ * API when the catalogue is online (so a freshly published website can be
+ * discovered at once); everything else — and every failure — falls back to
+ * the local pick, which the animation cannot tell apart.
+ */
+export async function resolveDiscoveryTarget(mode: DiscoveryMode, ctx: RecommendationContext): Promise<DiscoveryTarget | null> {
+  const catalog = getCatalog()
+  if (catalog.source === 'api' && (mode === 'random' || mode === 'trending' || mode === 'emerging')) {
+    try {
+      const { discoveryApi } = await import('./discoveryApi')
+      if (mode === 'random') {
+        const website = await discoveryApi.random(ctx.currentWebsiteId ?? undefined)
+        catalog.upsertWebsites([website])
+        return { kind: 'website', id: website.id, reason: 'Chosen at random' }
+      }
+      const list = mode === 'trending' ? await discoveryApi.trending(12) : await discoveryApi.emerging(12)
+      catalog.upsertWebsites(list)
+      const viewed = new Set(ctx.history.filter((e) => e.kind === 'website').map((e) => e.id))
+      const pool = list.filter((w) => w.id !== ctx.currentWebsiteId)
+      const fresh = pool.filter((w) => !viewed.has(w.id))
+      const pick = (fresh.length ? fresh : pool)[Math.floor(Math.random() * (fresh.length ? fresh.length : pool.length))]
+      if (pick) return { kind: 'website', id: pick.id, reason: mode === 'trending' ? 'Trending now' : 'An emerging website' }
+    } catch {
+      // fall through to the local pick
+    }
+  }
+  return pickDiscoveryTarget(mode, ctx)
 }

@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { websites } from '../data/websites'
 import { loadSession, saveSession } from '../lib/sessionStorage'
 import { getHighlightSet, recommendationsFor, type HighlightKind } from '../services/discoveryService'
 import {
@@ -16,9 +15,12 @@ import {
   type SessionSignals,
 } from '../services/recommendationService'
 import { getRelatedWebsites, getRelationshipBetween, type ResolvedRelationship } from '../services/relationshipService'
+import { getCatalog, useCatalogStore } from './catalogStore'
 import type { IntroPhase, RelationshipType, Vec3, ViewMode } from '../types/galaxy'
 import type { DiscoveryMode } from '../utils/discovery'
 import { EMPTY_FILTERS, type WebsiteFilters } from '../utils/filtering'
+import { useSettingsStore } from './settingsStore'
+import type { SearchResults } from '../utils/search'
 import { interactionEvents } from '../utils/interaction'
 
 export type DiscoveryPhase = 'idle' | 'scanning' | 'found' | 'travelling'
@@ -34,7 +36,7 @@ export interface DiscoveryState {
 }
 
 /** Which floating panel is open; they are mutually exclusive to keep the scene clear. */
-export type OverlayKind = 'search' | 'filters' | 'navigator' | 'discover' | null
+export type OverlayKind = 'search' | 'filters' | 'navigator' | 'discover' | 'submit' | null
 
 /** A connection the scene currently draws. Purely a line between two equals. */
 export interface VisibleRelationship {
@@ -81,16 +83,20 @@ interface GalaxyState {
   /** Search & discovery layer. Results are derived from `searchQuery`, never stored. */
   overlay: OverlayKind
   searchQuery: string
+  /** Current results for `searchQuery` (API, or local fallback); the scene mirrors them. */
+  searchResults: SearchResults | null
   filters: WebsiteFilters
   discovery: DiscoveryState
   minimapVisible: boolean
   introPhase: IntroPhase
-  /** DOM-side milestones driven by the intro timeline. */
+  /** DOM-side milestones driven by the entry sequence. */
   intro: {
-    titleVisible: boolean
-    subtitleVisible: boolean
     chromeVisible: boolean
+    /** Whether the running cinematic is the long first-visit version. */
+    cinematic: boolean
   }
+  /** The 3D scene has created its renderer. */
+  sceneReady: boolean
 
   // ─── Intelligence layer (temporary, session-scoped; never part of the dataset) ───
   /** Everything visited this session, oldest first. */
@@ -130,6 +136,7 @@ interface GalaxyState {
   closeOverlay: () => void
   toggleOverlay: (kind: Exclude<OverlayKind, null>) => void
   setSearchQuery: (query: string) => void
+  setSearchResults: (results: SearchResults | null) => void
   /** Remember a query as a session signal (called when a search leads somewhere). */
   recordSearch: (query: string) => void
   setFilters: (patch: Partial<WebsiteFilters>) => void
@@ -144,6 +151,16 @@ interface GalaxyState {
   setMinimapVisible: (visible: boolean) => void
   setIntroPhase: (phase: IntroPhase) => void
   setIntroMilestone: (key: keyof GalaxyState['intro'], value: boolean) => void
+  setSceneReady: (ready: boolean) => void
+  /** Loading finished: show the landing. */
+  showLanding: () => void
+  /** "Enter the WebGalaxy": start the cinematic flight. */
+  enterGalaxy: () => void
+  /** The flight has landed: onboarding for first-timers, otherwise control. */
+  finishIntro: () => void
+  completeOnboarding: () => void
+  /** Replays the landing + cinematic from wherever the explorer is. */
+  replayIntro: () => void
 }
 
 const toVisible = (r: ResolvedRelationship): VisibleRelationship => ({
@@ -177,7 +194,14 @@ const contextOf = (s: Pick<GalaxyState, 'selectedWebsiteId' | 'activeUniverseId'
   signals: s.sessionSignals,
 })
 
-/** Recompute the derived intelligence fields for a state snapshot. */
+let recommendationRun = 0
+
+/**
+ * Recompute the derived intelligence fields for a state snapshot. The
+ * recommendation provider may answer synchronously (local scorer) or later
+ * (a future API/AI provider); late answers are applied only if the context
+ * hasn't moved on.
+ */
 function intelligence(s: Pick<GalaxyState, 'selectedWebsiteId' | 'activeUniverseId' | 'explorationHistory' | 'sessionSignals'>) {
   const recommendationContext = contextOf(s)
   // Suggestions appear once the exploration has some substance: a website in
@@ -185,10 +209,15 @@ function intelligence(s: Pick<GalaxyState, 'selectedWebsiteId' | 'activeUniverse
   const meaningful = !!s.selectedWebsiteId || s.explorationHistory.length >= 2
   // Websites already listed as connections add nothing as suggestions.
   const listed = s.selectedWebsiteId ? relationshipsToShow(s.selectedWebsiteId).flatMap((r) => [r.sourceId, r.targetId]) : []
-  return {
-    recommendationContext,
-    recommendations: meaningful ? recommendationsFor(recommendationContext, 3, listed) : [],
-  }
+  const run = ++recommendationRun
+  const result = meaningful ? recommendationsFor(recommendationContext, 3, listed) : []
+  if (Array.isArray(result)) return { recommendationContext, recommendations: result }
+  result
+    .then((recommendations) => {
+      if (run === recommendationRun) useGalaxyStore.setState({ recommendations })
+    })
+    .catch(() => undefined)
+  return { recommendationContext, recommendations: [] as Recommendation[] }
 }
 
 function pushHistory(history: ExplorationEntry[], entry: Omit<ExplorationEntry, 'at'>): ExplorationEntry[] {
@@ -213,11 +242,13 @@ export const useGalaxyStore = create<GalaxyState>((set, get) => ({
   isTransitioning: false,
   overlay: null,
   searchQuery: '',
+  searchResults: null,
   filters: EMPTY_FILTERS,
   discovery: { mode: 'random', phase: 'idle', candidateId: null, targetId: null, reason: null },
   minimapVisible: !(typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches),
-  introPhase: 'idle',
-  intro: { titleVisible: false, subtitleVisible: false, chromeVisible: false },
+  introPhase: 'loading',
+  intro: { chromeVisible: false, cinematic: false },
+  sceneReady: false,
 
   explorationHistory: initialHistory,
   sessionSignals: initialSignals,
@@ -279,7 +310,9 @@ export const useGalaxyStore = create<GalaxyState>((set, get) => ({
   selectWebsite: (id, universeId) => {
     const s = get()
     if (s.selectedWebsiteId === id) return
-    const website = websites.find((w) => w.id === id)
+    const website = getCatalog().websites.find((w) => w.id === id)
+    // Full record (description…) arrives on demand; the panel fills in as it lands.
+    void useCatalogStore.getState().loadWebsiteDetail(id)
     const explorationHistory = pushHistory(s.explorationHistory, { kind: 'website', id })
     const sessionSignals = website ? recordWebsiteView(s.sessionSignals, website) : s.sessionSignals
     const last = s.activeDiscoveryPath[s.activeDiscoveryPath.length - 1]
@@ -287,7 +320,7 @@ export const useGalaxyStore = create<GalaxyState>((set, get) => ({
     // Following a connection into another universe leaves the remembered
     // free-exploration pose behind: closing there returns to that universe's
     // view, not to a spot in the universe we came from.
-    const crossing = s.viewMode === 'website' && s.activeUniverseId !== universeId
+    const crossing = s.activeUniverseId !== universeId
     set({
       selectedWebsiteId: id,
       activeUniverseId: universeId,
@@ -332,6 +365,7 @@ export const useGalaxyStore = create<GalaxyState>((set, get) => ({
   closeOverlay: () => set({ overlay: null }),
   toggleOverlay: (kind) => set((s) => ({ overlay: s.overlay === kind ? null : kind })),
   setSearchQuery: (query) => set({ searchQuery: query }),
+  setSearchResults: (results) => set({ searchResults: results }),
   recordSearch: (query) => {
     if (!query.trim()) return
     set((s) => ({ sessionSignals: recordSearch(s.sessionSignals, query) }))
@@ -387,7 +421,46 @@ export const useGalaxyStore = create<GalaxyState>((set, get) => ({
   setIntroPhase: (phase) => set({ introPhase: phase }),
   setIntroMilestone: (key, value) =>
     set((state) => ({ intro: { ...state.intro, [key]: value } })),
+  setSceneReady: (ready) => set({ sceneReady: ready }),
+  showLanding: () => {
+    if (get().introPhase === 'loading') set({ introPhase: 'landing' })
+  },
+  enterGalaxy: () => {
+    if (get().introPhase !== 'landing') return
+    const settings = useSettingsStore.getState()
+    set({ introPhase: 'playing', intro: { chromeVisible: false, cinematic: settings.firstVisit } })
+    settings.recordVisit()
+    interactionEvents.emit({ type: 'galaxy:enter', firstVisit: settings.firstVisit })
+  },
+  finishIntro: () => {
+    if (get().introPhase !== 'playing') return
+    const { firstVisit, onboardingDone } = useSettingsStore.getState()
+    if (firstVisit && !onboardingDone) set({ introPhase: 'onboarding' })
+    else set({ introPhase: 'complete', intro: { ...get().intro, chromeVisible: true } })
+  },
+  completeOnboarding: () => {
+    useSettingsStore.getState().setOnboardingDone(true)
+    set({ introPhase: 'complete', intro: { ...get().intro, chromeVisible: true } })
+  },
+  replayIntro: () => {
+    const s = get()
+    if (s.viewMode !== 'galaxy') s.leaveUniverse()
+    set({ overlay: null, highlight: null, introPhase: 'landing', intro: { chromeVisible: false, cinematic: true } })
+  },
 }))
+
+// When the catalogue changes (API data arriving, an edit published), derived
+// relationship / recommendation state is recomputed for the current focus.
+useCatalogStore.subscribe((catalog, previous) => {
+  if (catalog.websites === previous.websites && catalog.relationships === previous.relationships) return
+  const s = useGalaxyStore.getState()
+  useGalaxyStore.setState({
+    trendingWebsiteIds: getTrendingWebsites().map((w) => w.id),
+    emergingWebsiteIds: getEmergingWebsites().map((w) => w.id),
+    visibleRelationships: s.highlight ? highlightRelationships(s.highlight.sourceId, s.highlight.items) : s.selectedWebsiteId ? relationshipsToShow(s.selectedWebsiteId) : [],
+    ...intelligence(s),
+  })
+})
 
 // Persist the session-scoped exploration state (tab-local, never sent anywhere).
 useGalaxyStore.subscribe((state, previous) => {

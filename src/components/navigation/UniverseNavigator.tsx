@@ -1,5 +1,4 @@
-import { universes } from '../../data/universes'
-import { websitesInUniverse } from '../../data/websites'
+import { useCatalogStore } from '../../store/catalogStore'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { galaxyNavigation } from '../../utils/navigation'
 import { ExplorationHistory } from '../history/ExplorationHistory'
@@ -13,6 +12,8 @@ export function UniverseNavigator() {
   const open = useGalaxyStore((s) => s.overlay === 'navigator')
   const activeUniverseId = useGalaxyStore((s) => s.activeUniverseId)
   const closeOverlay = useGalaxyStore((s) => s.closeOverlay)
+  const universes = useCatalogStore((s) => s.universes)
+  const websites = useCatalogStore((s) => s.websites)
 
   return (
     <nav
@@ -47,7 +48,7 @@ export function UniverseNavigator() {
               >
                 <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: u.palette.primary, boxShadow: `0 0 8px ${u.palette.primary}` }} />
                 <span className={`flex-1 font-sans text-[13px] ${active ? 'text-white' : 'text-white/80'}`}>{u.name}</span>
-                <span className="font-sans text-[10px] tracking-[0.1em] text-space-300/55">{websitesInUniverse(u.id).length}</span>
+                <span className="font-sans text-[10px] tracking-[0.1em] text-space-300/55">{u.websiteCount ?? websites.filter((w) => w.universeId === u.id).length}</span>
               </button>
             </li>
           )

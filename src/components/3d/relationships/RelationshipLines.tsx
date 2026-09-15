@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Color } from 'three'
-import { websites } from '../../../data/websites'
+import { getCatalog } from '../../../store/catalogStore'
 import type { VisibleRelationship } from '../../../store/galaxyStore'
 import { accentFor } from '../../../utils/celestial'
 import { ConnectionLine } from './ConnectionLine'
@@ -13,7 +13,6 @@ interface RelationshipLinesProps {
 }
 
 const LEAVE_MS = 650
-const websiteById = new Map(websites.map((w) => [w.id, w]))
 const tintCache = new Map<string, string>()
 
 /** Tint: the two accents blended, then lifted toward white so lines stay quiet. */
@@ -21,8 +20,9 @@ function tintFor(sourceId: string, targetId: string): string {
   const key = `${sourceId}|${targetId}`
   const cached = tintCache.get(key)
   if (cached) return cached
-  const s = websiteById.get(sourceId)
-  const t = websiteById.get(targetId)
+  const { websites } = getCatalog()
+  const s = websites.find((w) => w.id === sourceId)
+  const t = websites.find((w) => w.id === targetId)
   const color = new Color(s ? accentFor(s) : '#c9d4ff')
   if (t) color.lerp(new Color(accentFor(t)), 0.5)
   const tint = `#${color.lerp(new Color('#ffffff'), 0.55).getHexString()}`

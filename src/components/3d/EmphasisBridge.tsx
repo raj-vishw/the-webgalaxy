@@ -1,11 +1,9 @@
 import { useEffect } from 'react'
-import { universes } from '../../data/universes'
-import { websites } from '../../data/websites'
 import { sceneMotion } from '../../lib/sceneMotion'
 import { discoveryFilterContext } from '../../services/discoveryService'
+import { useCatalogStore } from '../../store/catalogStore'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { applyFilters, hasActiveFilters } from '../../utils/filtering'
-import { searchGalaxy } from '../../utils/search'
 
 /**
  * Translates search, filter, discovery and travel state into the per-frame
@@ -17,8 +15,9 @@ export function EmphasisBridge() {
     let debounce = 0
 
     const apply = () => {
-      const { overlay, searchQuery, filters, discovery, isTransitioning, viewMode, selectedWebsiteId, highlight, visibleRelationships } =
+      const { overlay, searchQuery, filters, discovery, isTransitioning, viewMode, selectedWebsiteId, highlight, visibleRelationships, searchResults } =
         useGalaxyStore.getState()
+      const { websites } = useCatalogStore.getState()
       const emphasis = sceneMotion.emphasis
       const websiteIds = new Set<string>()
       const universeIds = new Set<string>()
@@ -56,8 +55,9 @@ export function EmphasisBridge() {
         if (site) universeIds.add(site.universeId)
         active = true
         dimOthers = 0.4
-      } else if (overlay === 'search' && searchQuery.trim()) {
-        const results = searchGalaxy(searchQuery, websites, universes, filters, 12, filters.discovery ? discoveryFilterContext(selectedWebsiteId) : undefined)
+      } else if (overlay === 'search' && searchQuery.trim() && searchResults) {
+        // The overlay owns the search (API or local fallback); the scene just mirrors it.
+        const results = searchResults
         for (const match of results.websites) {
           websiteIds.add(match.website.id)
           universeIds.add(match.website.universeId)
@@ -88,8 +88,11 @@ export function EmphasisBridge() {
     }
 
     apply()
+    const unsubscribeCatalog = useCatalogStore.subscribe((state, previous) => {
+      if (state.websites !== previous.websites) apply()
+    })
     const unsubscribe = useGalaxyStore.subscribe((state, previous) => {
-      if (state.searchQuery !== previous.searchQuery) {
+      if (state.searchQuery !== previous.searchQuery || state.searchResults !== previous.searchResults) {
         // Keystrokes are coalesced; everything else applies immediately.
         window.clearTimeout(debounce)
         debounce = window.setTimeout(apply, 60)
@@ -111,6 +114,7 @@ export function EmphasisBridge() {
     return () => {
       window.clearTimeout(debounce)
       unsubscribe()
+      unsubscribeCatalog()
       sceneMotion.emphasis.active = false
       sceneMotion.filter.active = false
       sceneMotion.relations.active = false

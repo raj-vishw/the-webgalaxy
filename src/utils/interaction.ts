@@ -15,6 +15,11 @@ export type InteractionEvent =
   | { type: 'camera:travel'; phase: 'start' | 'end' }
   /** The explorer followed a connection or a suggestion from one website to another. */
   | { type: 'relationship:follow'; fromId: string | null; toId: string }
+  | { type: 'galaxy:enter'; firstVisit: boolean }
+  | { type: 'search:perform'; query: string; results: number }
+  | { type: 'discovery:start'; mode: string }
+  | { type: 'discovery:complete'; mode: string; targetId: string | null }
+  | { type: 'submission:create'; websiteName: string }
 
 type Listener = (event: InteractionEvent) => void
 

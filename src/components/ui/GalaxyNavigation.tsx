@@ -11,7 +11,7 @@ export function GalaxyNavigation() {
   const filtersActive = useGalaxyStore((s) => hasActiveFilters(s.filters))
   const toggleOverlay = useGalaxyStore((s) => s.toggleOverlay)
 
-  const link = (label: string, kind: 'navigator' | 'discover' | 'search' | 'filters', hint?: string) => (
+  const link = (label: string, kind: 'navigator' | 'discover' | 'search' | 'filters' | 'submit', hint?: string) => (
     <button
       key={kind}
       type="button"
@@ -52,6 +52,7 @@ export function GalaxyNavigation() {
         {link('Discover', 'discover')}
         {link('Search', 'search', isMac ? '⌘K' : '/')}
         {link('Filter', 'filters')}
+        {link('+ Add', 'submit')}
       </nav>
     </header>
   )

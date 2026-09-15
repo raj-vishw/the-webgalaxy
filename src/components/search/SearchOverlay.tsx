@@ -1,12 +1,12 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { featuredWebsiteIds, searchSuggestions } from '../../data/featured'
-import { universes } from '../../data/universes'
-import { websites } from '../../data/websites'
-import { discoveryFilterContext, expandSearch } from '../../services/discoveryService'
+import { useSearch } from '../../hooks/useSearch'
+import { expandSearch } from '../../services/discoveryService'
+import { useCatalogStore } from '../../store/catalogStore'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { accentFor } from '../../utils/celestial'
 import { galaxyNavigation } from '../../utils/navigation'
-import { searchGalaxy, type SearchMatch } from '../../utils/search'
+import type { SearchMatch } from '../../utils/search'
 import { EmergingWebsites } from '../discovery/EmergingWebsites'
 import { TrendingWebsites } from '../discovery/TrendingWebsites'
 import { eyebrow, focusRing, glassPanel } from '../ui/panel'
@@ -26,15 +26,14 @@ export function SearchOverlay() {
   const setSearchQuery = useGalaxyStore((s) => s.setSearchQuery)
   const recordSearch = useGalaxyStore((s) => s.recordSearch)
   const closeOverlay = useGalaxyStore((s) => s.closeOverlay)
-  const selectedWebsiteId = useGalaxyStore((s) => s.selectedWebsiteId)
+  const universes = useCatalogStore((s) => s.universes)
+  const websites = useCatalogStore((s) => s.websites)
+  const upsertWebsites = useCatalogStore((s) => s.upsertWebsites)
   const inputRef = useRef<HTMLInputElement>(null)
   const listboxId = useId()
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const results = useMemo(() => {
-    const context = filters.discovery ? discoveryFilterContext(selectedWebsiteId) : undefined
-    return searchGalaxy(query, websites, universes, filters, 12, context)
-  }, [query, filters, selectedWebsiteId])
+  const { results, pending } = useSearch(query, filters, open)
   // What the top match connects to, shown after the direct results.
   const expansion = useMemo(() => expandSearch(results, query), [results, query])
   const flat = useMemo<SearchMatch[]>(
@@ -63,6 +62,8 @@ export function SearchOverlay() {
     recordSearch(query)
     closeOverlay()
     setSearchQuery('')
+    // A backend hit the catalogue hasn't got yet (freshly published) is added on the fly.
+    if (match.kind === 'website' && !websites.some((w) => w.id === match.website.id)) upsertWebsites([match.website])
     if (match.kind === 'website') galaxyNavigation.focusWebsite(match.website.id)
     else galaxyNavigation.focusUniverse(match.universe.id)
   }
@@ -109,7 +110,10 @@ export function SearchOverlay() {
         ].join(' ')}
       >
         <div className="px-4 pt-4 pb-3 sm:px-5 sm:pt-5">
-          <p className={`${eyebrow} mb-3`}>◉ Search the WebGalaxy</p>
+          <p className={`${eyebrow} mb-3`}>
+            ◉ Search the WebGalaxy
+            {pending && <span aria-live="polite" className="ml-2 normal-case tracking-normal text-space-300/45">· refining…</span>}
+          </p>
           <SearchInput
             ref={inputRef}
             value={query}

@@ -1,6 +1,6 @@
 import { useParallax } from '../../hooks/useParallax'
 import type { QualityProfile } from '../../hooks/useQualityProfile'
-import { universes } from '../../data/universes'
+import { useUniverses } from '../../store/catalogStore'
 import { Universe } from './universe/Universe'
 
 interface UniverseFieldProps {
@@ -17,6 +17,7 @@ const STAGGER_SPAN = 0.55
  */
 export function UniverseField({ profile, pixelRatio }: UniverseFieldProps) {
   const groupRef = useParallax(1.2)
+  const universes = useUniverses()
   return (
     <group ref={groupRef}>
       {universes.map((definition, index) => (

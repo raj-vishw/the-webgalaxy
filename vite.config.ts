@@ -7,4 +7,8 @@ export default defineConfig({
   build: {
     chunkSizeWarningLimit: 1200,
   },
+  server: {
+    // The public galaxy talks to the API on the same origin in development.
+    proxy: { '/api': { target: process.env.VITE_API_PROXY ?? 'http://localhost:4000', changeOrigin: true } },
+  },
 })

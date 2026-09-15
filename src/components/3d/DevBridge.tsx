@@ -2,12 +2,14 @@ import { useThree } from '@react-three/fiber'
 import { useEffect } from 'react'
 import { Vector3 } from 'three'
 import { celestialRegistry } from '../../lib/celestialRegistry'
+import { useCatalogStore } from '../../store/catalogStore'
 import { useGalaxyStore } from '../../store/galaxyStore'
 
 declare global {
   interface Window {
     __webgalaxy?: {
       store: typeof useGalaxyStore
+      catalog: typeof useCatalogStore
       /** Screen position (CSS px) of a registered universe or website, or null. */
       project: (id: string) => { x: number; y: number; distance: number } | null
       camera: () => { position: [number, number, number] }
@@ -23,6 +25,7 @@ export function DevBridge() {
   useEffect(() => {
     window.__webgalaxy = {
       store: useGalaxyStore,
+      catalog: useCatalogStore,
       camera: () => {
         const { camera } = get()
         return { position: [camera.position.x, camera.position.y, camera.position.z] }

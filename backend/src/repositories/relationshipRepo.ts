@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, or, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import type { Database } from '../db/client.js'
 import { websiteRelationships, websites, type RelationshipRow } from '../db/schema.js'
@@ -54,6 +54,21 @@ export const relationshipRepo = {
       )
       .orderBy(desc(websiteRelationships.strength), asc(websiteRelationships.createdAt))
     return flatten(rows)
+  },
+
+  /** Relationships of many websites at once (avoids N+1 on list endpoints). */
+  async forWebsites(db: Database, websiteIds: string[]): Promise<Map<string, RelationshipRecord[]>> {
+    const out = new Map<string, RelationshipRecord[]>()
+    if (!websiteIds.length) return out
+    const rows = flatten(
+      await baseSelect(db)
+        .where(and(or(inArray(websiteRelationships.sourceWebsiteId, websiteIds), inArray(websiteRelationships.targetWebsiteId, websiteIds)), eq(source.isActive, true), eq(target.isActive, true)))
+        .orderBy(desc(websiteRelationships.strength), asc(websiteRelationships.createdAt)),
+    )
+    for (const r of rows) {
+      for (const id of [r.sourceWebsiteId, r.targetWebsiteId]) if (websiteIds.includes(id)) out.set(id, [...(out.get(id) ?? []), r])
+    }
+    return out
   },
 
   async list(db: Database, page: number, limit: number, type?: string, includeInactive = false): Promise<{ rows: RelationshipRecord[]; total: number }> {

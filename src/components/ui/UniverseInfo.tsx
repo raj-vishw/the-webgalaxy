@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
-import { universes } from '../../data/universes'
-import { websitesInUniverse } from '../../data/websites'
+import { useUniverse, useWebsitesInUniverse } from '../../store/catalogStore'
 import { getRecommendedUniverses } from '../../services/recommendationService'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { galaxyNavigation } from '../../utils/navigation'
@@ -13,13 +12,14 @@ export function UniverseInfo() {
   const viewMode = useGalaxyStore((s) => s.viewMode)
   const activeUniverseId = useGalaxyStore((s) => s.activeUniverseId)
   const leaveUniverse = useGalaxyStore((s) => s.leaveUniverse)
-  const universe = universes.find((u) => u.id === activeUniverseId)
-  const count = universe ? websitesInUniverse(universe.id).length : 0
+  const universe = useUniverse(activeUniverseId)
+  const count = useWebsitesInUniverse(activeUniverseId).length
   const discovering = useGalaxyStore((s) => s.discovery.phase !== 'idle')
   const visible = viewMode === 'universe' && !!universe && !discovering
   const context = useGalaxyStore((s) => s.recommendationContext)
   // Universes an explorer of this one often finds useful — peers, not children.
-  const related = useMemo(() => (universe ? getRecommendedUniverses({ ...context, currentUniverseId: universe.id }) : []), [universe, context])
+  const universeId = universe?.id ?? null
+  const related = useMemo(() => (universeId ? getRecommendedUniverses({ ...context, currentUniverseId: universeId }) : []), [universeId, context])
 
   return (
     <aside

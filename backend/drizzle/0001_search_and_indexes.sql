@@ -1,0 +1,3 @@
+ALTER TABLE "websites" ADD COLUMN "search_vector" "tsvector" GENERATED ALWAYS AS (to_tsvector('simple', coalesce("websites"."name", '') || ' ' || coalesce("websites"."description", ''))) STORED;--> statement-breakpoint
+CREATE INDEX "websites_universe_active_idx" ON "websites" USING btree ("universe_id","is_active");--> statement-breakpoint
+CREATE INDEX "websites_search_idx" ON "websites" USING gin ("search_vector");

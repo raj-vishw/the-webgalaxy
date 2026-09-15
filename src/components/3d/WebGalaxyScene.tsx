@@ -30,6 +30,7 @@ export function WebGalaxyScene() {
       gl={{ antialias: false, powerPreference: 'high-performance', alpha: false, stencil: false }}
       flat
       onPointerMissed={() => useGalaxyStore.getState().clearWebsite()}
+      onCreated={() => useGalaxyStore.getState().setSceneReady(true)}
     >
       <color attach="background" args={[BACKGROUND]} />
       {/* Soft key light for planets; everything else is self-illuminated. */}

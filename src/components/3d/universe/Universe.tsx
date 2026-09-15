@@ -99,7 +99,7 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
       const pxPerUnit = size.height / 2 / (distance * Math.tan(fov / 2))
       const offset = scale * pxPerUnit + LABEL_GAP_PX
       const proximityFade = MathUtils.smoothstep(distance, definition.scale * 3.2, definition.scale * 5)
-      label.style.opacity = String(frame.reveal * proximityFade)
+      label.style.opacity = String(frame.reveal * proximityFade * sceneMotion.labelReveal)
       label.style.transform = `translateY(${offset.toFixed(1)}px)`
     }
   }, -1)

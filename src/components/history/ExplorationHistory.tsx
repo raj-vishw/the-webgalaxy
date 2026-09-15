@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
-import { universes } from '../../data/universes'
-import { websites } from '../../data/websites'
+import { useCatalogStore } from '../../store/catalogStore'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { accentFor } from '../../utils/celestial'
 import { galaxyNavigation } from '../../utils/navigation'
@@ -19,6 +18,8 @@ interface ExplorationHistoryProps {
 export function ExplorationHistory({ limit = 5 }: ExplorationHistoryProps) {
   const history = useGalaxyStore((s) => s.explorationHistory)
   const clear = useGalaxyStore((s) => s.clearExplorationHistory)
+  const websites = useCatalogStore((s) => s.websites)
+  const universes = useCatalogStore((s) => s.universes)
   const recent = useMemo(() => {
     const seen = new Set<string>()
     const out: { id: string; name: string; universeName: string | undefined; objectType: 'star' | 'planet' | 'moon' | 'comet'; accent: string }[] = []
@@ -37,7 +38,7 @@ export function ExplorationHistory({ limit = 5 }: ExplorationHistoryProps) {
       })
     }
     return out
-  }, [history, limit])
+  }, [history, limit, websites, universes])
 
   if (!recent.length) return null
 

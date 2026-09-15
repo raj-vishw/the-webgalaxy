@@ -16,16 +16,31 @@ interface CameraControllerProps {
   profile: QualityProfile
 }
 
-const INTRO_START = new Vector3(0, 2, 300)
-const INTRO_APPROACH = new Vector3(0, 5, 72)
+/** Where the camera waits behind the landing title, relative to the overview. */
+const LANDING_PULLBACK = 1.75
+const LANDING_LIFT = 0.1
+/** Flight lengths in seconds: first visit, returning visitor, reduced motion. */
+const CINEMATIC_SECONDS = 4.6
+const RETURNING_SECONDS = 2.3
+const REDUCED_SECONDS = 0.6
+/** How far the landing view drifts forward per second while the title is up. */
+const LANDING_DRIFT = 0.012
 
 const focusPoint = new Vector3()
 const focusDelta = new Vector3()
 const heading = new Vector3()
+const landingPose = new Vector3()
+
+function landingPositionFor(overview: { position: Vector3; target: Vector3 }, out: Vector3) {
+  out.subVectors(overview.position, overview.target).multiplyScalar(LANDING_PULLBACK)
+  out.y += out.length() * LANDING_LIFT
+  return out.add(overview.target)
+}
 
 /**
- * Owns the camera: the cinematic intro (GSAP), damped orbit controls for free
- * exploration, the follow behaviour while a website is focused, and the
+ * Owns the camera: the entry sequence (landing pose with a slow forward
+ * drift, then the GSAP flight into the overview), damped orbit controls for
+ * free exploration, the follow behaviour while a website is focused, and the
  * exploration flights via `CameraTransition`.
  */
 export function CameraController({ profile }: CameraControllerProps) {
@@ -40,49 +55,54 @@ export function CameraController({ profile }: CameraControllerProps) {
 
   const overview = useMemo(() => overviewFor(aspect), [aspect])
 
-  // ─── Intro ────────────────────────────────────────────────────────────────
+  // ─── Landing: the galaxy appears behind the title ─────────────────────────
   useEffect(() => {
-    const { setIntroPhase, setIntroMilestone } = useGalaxyStore.getState()
+    if (introPhase !== 'loading' && introPhase !== 'landing') return
     const destination = overviewFor(getState().viewport.aspect)
-
-    camera.position.copy(INTRO_START)
+    camera.position.copy(landingPositionFor(destination, landingPose))
     camera.lookAt(destination.target)
     controlsRef.current?.target.copy(destination.target)
-    sceneMotion.starReveal = 0
-    sceneMotion.universeReveal = 0
-
+    // Stars first, then the universes — the reveal plays under the loading screen.
     const tl = gsap.timeline({ defaults: { ease: 'sine.inOut' } })
-    tl.to(sceneMotion, { starReveal: 0.3, duration: 4 }, 0)
-      .to(camera.position, { x: INTRO_APPROACH.x, y: INTRO_APPROACH.y, z: INTRO_APPROACH.z, duration: 6.8, ease: 'power2.inOut' }, 0)
-      .to(sceneMotion, { starReveal: 1, duration: 5 }, 2)
-      .call(() => setIntroMilestone('titleVisible', true), [], 3.2)
-      .call(() => setIntroMilestone('subtitleVisible', true), [], 4.4)
-      .to(camera.position, { x: destination.position.x, y: destination.position.y, z: destination.position.z, duration: 5, ease: 'power2.inOut' }, 6.8)
-      .to(sceneMotion, { universeReveal: 1, duration: 4.2 }, 7)
-      .call(() => {
-        setIntroMilestone('titleVisible', false)
-        setIntroMilestone('subtitleVisible', false)
-      }, [], 9.4)
-      .call(() => setIntroMilestone('chromeVisible', true), [], 10.4)
-      .call(() => setIntroPhase('complete'), [], 11.8)
+    if (sceneMotion.starReveal < 1) tl.to(sceneMotion, { starReveal: 1, duration: 2.6 }, 0)
+    if (sceneMotion.universeReveal < 1) tl.to(sceneMotion, { universeReveal: 1, duration: 3.2 }, 0.8)
+    // Labels wait behind the title.
+    tl.to(sceneMotion, { labelReveal: 0, duration: 0.6 }, 0)
+    if (profile.reducedMotion) tl.timeScale(3)
+    return () => {
+      tl.kill()
+      sceneMotion.starReveal = 1
+      sceneMotion.universeReveal = 1
+    }
+  }, [camera, getState, introPhase, profile.reducedMotion])
 
-    // Reduced motion keeps the sequence (it is how the scene appears) but
-    // plays it several times faster so the camera settles quickly.
-    if (profile.reducedMotion) tl.timeScale(4)
-
-    setIntroPhase('playing')
+  // ─── Cinematic: "Enter the WebGalaxy" flies into the overview ─────────────
+  useEffect(() => {
+    if (introPhase !== 'playing') return
+    const { finishIntro, intro } = useGalaxyStore.getState()
+    const destination = overviewFor(getState().viewport.aspect)
+    const duration = profile.reducedMotion ? REDUCED_SECONDS : intro.cinematic ? CINEMATIC_SECONDS : RETURNING_SECONDS
+    const tl = gsap.timeline()
+    tl.to(camera.position, { x: destination.position.x, y: destination.position.y, z: destination.position.z, duration, ease: 'power2.inOut' }, 0)
+      .to(sceneMotion, { labelReveal: 1, duration: Math.max(0.4, duration * 0.5), ease: 'sine.out' }, duration * 0.45)
+      .call(finishIntro, [], duration)
     registerIntroTimeline(tl)
-
     return () => {
       registerIntroTimeline(null)
       tl.kill()
     }
-  }, [camera, getState, profile.reducedMotion])
+  }, [camera, getState, introPhase, profile.reducedMotion])
 
-  // Keep the camera aimed at the galaxy while GSAP owns its position, and
-  // publish the pose for the minimap.
-  useFrame(() => {
-    if (introPhase !== 'complete') camera.lookAt(overview.target)
+  // Keep the camera aimed at the galaxy while the sequence owns its position
+  // (with a barely perceptible forward drift behind the title), and publish
+  // the pose for the minimap.
+  useFrame((_, delta) => {
+    if (introPhase !== 'complete') {
+      if ((introPhase === 'landing' || introPhase === 'loading') && !profile.reducedMotion) {
+        camera.position.lerp(overview.position, LANDING_DRIFT * delta)
+      }
+      camera.lookAt(overview.target)
+    }
     camera.getWorldDirection(heading)
     sceneMotion.camera.x = camera.position.x
     sceneMotion.camera.z = camera.position.z

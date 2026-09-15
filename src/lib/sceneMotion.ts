@@ -9,6 +9,8 @@ export const sceneMotion = {
   starReveal: 0,
   /** 0 → 1: staggered reveal of the universes. */
   universeReveal: 0,
+  /** 0 → 1: universe labels; held back behind the landing title, revealed during the flight. */
+  labelReveal: 0,
   /** Normalised pointer position in [-1, 1], smoothed by the parallax rig. */
   pointer: { x: 0, y: 0 },
   /** Whether the user is actively dragging the camera. */

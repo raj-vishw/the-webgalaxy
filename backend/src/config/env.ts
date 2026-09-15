@@ -10,7 +10,7 @@ const schema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   HOST: z.string().default('0.0.0.0'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  DATABASE_URL: z.string().url().optional(),
+  DATABASE_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
   PGLITE_DIR: z.string().default('./data/pglite'),
   CORS_ORIGINS: z.string().default('http://localhost:5173,http://localhost:5174'),
   JWT_SECRET: z.string().min(16).default('dev-only-secret-change-me-please'),

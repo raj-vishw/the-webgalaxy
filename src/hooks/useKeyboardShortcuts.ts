@@ -51,6 +51,10 @@ export function useKeyboardShortcuts() {
         case 'M':
           store.setMinimapVisible(!store.minimapVisible)
           break
+        case 'a':
+        case 'A':
+          store.toggleOverlay('submit')
+          break
       }
     }
     window.addEventListener('keydown', onKeyDown)

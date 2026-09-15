@@ -1,4 +1,4 @@
-import { universes } from '../../data/universes'
+import { useUniverses } from '../../store/catalogStore'
 import { getTrend, getTrendingWebsites } from '../../services/recommendationService'
 import { accentFor } from '../../utils/celestial'
 import { galaxyNavigation } from '../../utils/navigation'
@@ -14,6 +14,7 @@ const DIRECTION = { up: '↑', steady: '→', down: '↓' } as const
 
 /** Static demo "trending" list. Marked as a snapshot — it is not live traffic. */
 export function TrendingWebsites({ limit = 4, onChoose }: TrendingWebsitesProps) {
+  const universes = useUniverses()
   const items = getTrendingWebsites(limit)
   return (
     <section aria-label="Trending websites">

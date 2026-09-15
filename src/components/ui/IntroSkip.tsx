@@ -8,9 +8,10 @@ export function IntroSkip() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    const id = window.setTimeout(() => setReady(true), 1800)
+    if (introPhase !== 'playing') return
+    const id = window.setTimeout(() => setReady(true), 900)
     return () => window.clearTimeout(id)
-  }, [])
+  }, [introPhase])
 
   const visible = ready && introPhase === 'playing'
 
