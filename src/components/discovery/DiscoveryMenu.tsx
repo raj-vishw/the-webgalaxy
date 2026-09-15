@@ -24,7 +24,7 @@ export function DiscoveryMenu() {
       className={[
         glassPanel,
         'absolute top-16 right-9 z-30 w-[340px] px-3 pt-3 pb-3',
-        'max-sm:inset-x-3 max-sm:top-auto max-sm:bottom-3 max-sm:w-auto',
+        'max-sm:inset-x-3 max-sm:top-auto max-sm:bottom-20 max-sm:w-auto',
         'transition-[opacity,transform] duration-300 ease-out',
         open ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 -translate-y-1',
       ].join(' ')}

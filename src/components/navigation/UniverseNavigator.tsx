@@ -23,7 +23,7 @@ export function UniverseNavigator() {
         glassPanel,
         'absolute top-16 left-9 z-30 w-[252px] px-2 pt-3 pb-2',
         'max-h-[calc(100vh-6rem)] overflow-y-auto overscroll-contain',
-        'max-sm:inset-x-3 max-sm:top-auto max-sm:bottom-3 max-sm:max-h-[70vh] max-sm:w-auto',
+        'max-sm:inset-x-3 max-sm:top-auto max-sm:bottom-20 max-sm:max-h-[62vh] max-sm:w-auto',
         'transition-[opacity,transform] duration-300 ease-out',
         open ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 -translate-y-1',
       ].join(' ')}

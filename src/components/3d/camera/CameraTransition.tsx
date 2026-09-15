@@ -66,82 +66,104 @@ export function CameraTransition({ controls, overview, reducedMotion }: CameraTr
       )
     }
 
-    const destination = resolveDestination({
-      viewMode,
-      previousMode,
-      previousUniverseId,
-      activeUniverseId,
-      selectedWebsiteId,
-      previousCameraPosition: store.previousCameraPosition,
-      previousCameraTarget: store.previousCameraTarget,
-      cameraPosition: camera.position,
-      overview,
-    })
-    if (!destination) return
-
-    flightRef.current?.kill()
-    startPosition.copy(camera.position)
-    startTarget.copy(orbit.target)
-    const initialFocus = destination.focus()
-    const end = destination.position(initialFocus).clone()
-    const waypoint = destination.waypoint
-    const travel = waypoint
-      ? startPosition.distanceTo(waypoint.position) + waypoint.position.distanceTo(end)
-      : startPosition.distanceTo(end)
-    const duration = flightDuration(travel, reducedMotion) * (waypoint ? 1.35 : 1)
-    const lift = waypoint ? 0 : flightLift(travel, reducedMotion)
-    store.setCameraTarget([initialFocus.x, initialFocus.y, initialFocus.z])
-    // `isTransitioning` disables the orbit controls for the flight.
-    store.setTransitioning(true)
-
-    const proxy = { t: 0 }
-    const tween = gsap.to(proxy, {
-      t: 1,
-      duration,
-      ease: waypoint ? 'power1.inOut' : 'power2.inOut',
-      onUpdate: () => {
-        const focus = destination.focus()
-        const finish = destination.position(focus)
-        if (waypoint) {
-          bezier(flightPosition, startPosition, waypoint.position, finish, proxy.t)
-          bezier(flightTarget, startTarget, waypoint.target, focus, proxy.t)
-        } else {
-          flightPosition.lerpVectors(startPosition, finish, proxy.t)
-          flightPosition.y += Math.sin(proxy.t * Math.PI) * lift
-          flightTarget.lerpVectors(startTarget, focus, proxy.t)
-        }
-        camera.position.copy(flightPosition)
-        orbit.target.copy(flightTarget)
-        camera.lookAt(flightTarget)
-      },
-      onComplete: () => {
-        flightRef.current = null
-        useGalaxyStore.getState().setTransitioning(false)
-      },
-    })
-    flightRef.current = tween
-
-    // Touching the scene mid-flight stops the flight where it is; the
-    // controls come straight back so the user is never locked out.
-    const interrupt = () => {
-      if (flightRef.current !== tween) return
-      tween.kill()
-      flightRef.current = null
-      useGalaxyStore.getState().setTransitioning(false)
+    // The destination object may register a frame later than the store
+    // update (a website promoted from the point cloud to a full object), so
+    // resolution retries for a few frames before giving up.
+    let raf = 0
+    let attempts = 0
+    let cleanupFlight: (() => void) | null = null
+    const start = () => {
+      const destination = resolveDestination({
+        viewMode,
+        previousMode,
+        previousUniverseId,
+        activeUniverseId,
+        selectedWebsiteId,
+        previousCameraPosition: store.previousCameraPosition,
+        previousCameraTarget: store.previousCameraTarget,
+        cameraPosition: camera.position,
+        overview,
+      })
+      if (!destination) {
+        if (++attempts < 30) raf = requestAnimationFrame(start)
+        return
+      }
+      cleanupFlight = fly(destination)
     }
-    canvas.addEventListener('pointerdown', interrupt)
-    canvas.addEventListener('touchstart', interrupt, { passive: true })
-    canvas.addEventListener('wheel', interrupt, { passive: true })
 
-    return () => {
-      canvas.removeEventListener('pointerdown', interrupt)
-      canvas.removeEventListener('touchstart', interrupt)
-      canvas.removeEventListener('wheel', interrupt)
-      tween.kill()
-      if (flightRef.current === tween) {
+    const fly = (destination: NonNullable<ReturnType<typeof resolveDestination>>) => {
+      flightRef.current?.kill()
+      startPosition.copy(camera.position)
+      startTarget.copy(orbit.target)
+      const initialFocus = destination.focus()
+      const end = destination.position(initialFocus).clone()
+      const waypoint = destination.waypoint
+      const travel = waypoint
+        ? startPosition.distanceTo(waypoint.position) + waypoint.position.distanceTo(end)
+        : startPosition.distanceTo(end)
+      const duration = flightDuration(travel, reducedMotion) * (waypoint ? 1.35 : 1)
+      const lift = waypoint ? 0 : flightLift(travel, reducedMotion)
+      store.setCameraTarget([initialFocus.x, initialFocus.y, initialFocus.z])
+      // `isTransitioning` disables the orbit controls for the flight.
+      store.setTransitioning(true)
+
+      const proxy = { t: 0 }
+      const tween = gsap.to(proxy, {
+        t: 1,
+        duration,
+        ease: waypoint ? 'power1.inOut' : 'power2.inOut',
+        onUpdate: () => {
+          const focus = destination.focus()
+          const finish = destination.position(focus)
+          if (waypoint) {
+            bezier(flightPosition, startPosition, waypoint.position, finish, proxy.t)
+            bezier(flightTarget, startTarget, waypoint.target, focus, proxy.t)
+          } else {
+            flightPosition.lerpVectors(startPosition, finish, proxy.t)
+            flightPosition.y += Math.sin(proxy.t * Math.PI) * lift
+            flightTarget.lerpVectors(startTarget, focus, proxy.t)
+          }
+          camera.position.copy(flightPosition)
+          orbit.target.copy(flightTarget)
+          camera.lookAt(flightTarget)
+        },
+        onComplete: () => {
+          flightRef.current = null
+          useGalaxyStore.getState().setTransitioning(false)
+        },
+      })
+      flightRef.current = tween
+
+      // Touching the scene mid-flight stops the flight where it is; the
+      // controls come straight back so the user is never locked out.
+      const interrupt = () => {
+        if (flightRef.current !== tween) return
+        tween.kill()
         flightRef.current = null
         useGalaxyStore.getState().setTransitioning(false)
       }
+      canvas.addEventListener('pointerdown', interrupt)
+      canvas.addEventListener('touchstart', interrupt, { passive: true })
+      canvas.addEventListener('wheel', interrupt, { passive: true })
+
+
+      return () => {
+        canvas.removeEventListener('pointerdown', interrupt)
+        canvas.removeEventListener('touchstart', interrupt)
+        canvas.removeEventListener('wheel', interrupt)
+        tween.kill()
+        if (flightRef.current === tween) {
+          flightRef.current = null
+          useGalaxyStore.getState().setTransitioning(false)
+        }
+      }
+    }
+
+    start()
+
+    return () => {
+      cancelAnimationFrame(raf)
+      cleanupFlight?.()
     }
   }, [camera, canvas, controls, viewMode, activeUniverseId, selectedWebsiteId, introPhase, overview, reducedMotion])
 

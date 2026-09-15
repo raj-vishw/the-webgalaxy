@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useSettingsStore } from '../store/settingsStore'
 
 export type QualityTier = 'low' | 'medium' | 'high'
 
@@ -23,20 +24,22 @@ export interface QualityProfile {
   lodDistance: number
   /** `prefers-reduced-motion`: shorter flights, calmer orbits, no idle drift. */
   reducedMotion: boolean
+  /** Full celestial objects drawn in the entered universe; the rest are points. */
+  maxDetailed: number
 }
 
 const PROFILES: Record<QualityTier, Omit<QualityProfile, 'tier' | 'coarsePointer' | 'reducedMotion'>> = {
   high: {
     stars: { far: 14000, mid: 5000, near: 1400 }, universeDetail: 1, maxDpr: 2, postProcessing: true,
-    planetSegments: 40, atmosphere: true, dustDetail: 1, lodDistance: 60,
+    planetSegments: 40, atmosphere: true, dustDetail: 1, lodDistance: 60, maxDetailed: 160,
   },
   medium: {
     stars: { far: 8000, mid: 3000, near: 800 }, universeDetail: 0.7, maxDpr: 1.5, postProcessing: true,
-    planetSegments: 28, atmosphere: true, dustDetail: 0.6, lodDistance: 48,
+    planetSegments: 28, atmosphere: true, dustDetail: 0.6, lodDistance: 48, maxDetailed: 110,
   },
   low: {
     stars: { far: 4000, mid: 1400, near: 400 }, universeDetail: 0.45, maxDpr: 1, postProcessing: false,
-    planetSegments: 24, atmosphere: false, dustDetail: 0.3, lodDistance: 36,
+    planetSegments: 24, atmosphere: false, dustDetail: 0.3, lodDistance: 36, maxDetailed: 60,
   },
 }
 
@@ -52,12 +55,27 @@ function detectTier(): QualityTier {
   return 'high'
 }
 
-/** Picks a render budget once, based on the device. Stable for the session. */
+const TIERS: QualityTier[] = ['high', 'medium', 'low']
+
+/** The tier Auto resolves to: the detected one, stepped down by sustained low frame rates. */
+export function resolveTier(setting: 'auto' | QualityTier, autoDowngrade: number): QualityTier {
+  if (setting !== 'auto') return setting
+  const detected = detectTier()
+  return TIERS[Math.min(TIERS.length - 1, TIERS.indexOf(detected) + autoDowngrade)]
+}
+
+/**
+ * The render budget: the graphics setting (Auto adapts to the device and to
+ * measured performance — see `AdaptiveQuality`), plus input and motion
+ * preferences. Changes remount the heavy scene parts, which is rare.
+ */
 export function useQualityProfile(): QualityProfile {
+  const graphics = useSettingsStore((s) => s.graphics)
+  const autoDowngrade = useSettingsStore((s) => s.autoDowngrade)
   return useMemo(() => {
-    const tier = detectTier()
+    const tier = resolveTier(graphics, autoDowngrade)
     const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches ?? false
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
     return { tier, coarsePointer, reducedMotion, ...PROFILES[tier] }
-  }, [])
+  }, [graphics, autoDowngrade])
 }

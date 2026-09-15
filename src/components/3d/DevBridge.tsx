@@ -13,6 +13,8 @@ declare global {
       /** Screen position (CSS px) of a registered universe or website, or null. */
       project: (id: string) => { x: number; y: number; distance: number } | null
       camera: () => { position: [number, number, number] }
+      /** Renderer statistics for the last frame. */
+      renderInfo: () => { calls: number; triangles: number; points: number; geometries: number; textures: number }
     }
   }
 }
@@ -29,6 +31,10 @@ export function DevBridge() {
       camera: () => {
         const { camera } = get()
         return { position: [camera.position.x, camera.position.y, camera.position.z] }
+      },
+      renderInfo: () => {
+        const { gl } = get()
+        return { calls: gl.info.render.calls, triangles: gl.info.render.triangles, points: gl.info.render.points, geometries: gl.info.memory.geometries, textures: gl.info.memory.textures }
       },
       project: (id) => {
         const object = celestialRegistry.get(id)

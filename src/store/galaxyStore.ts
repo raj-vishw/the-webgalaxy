@@ -36,7 +36,7 @@ export interface DiscoveryState {
 }
 
 /** Which floating panel is open; they are mutually exclusive to keep the scene clear. */
-export type OverlayKind = 'search' | 'filters' | 'navigator' | 'discover' | 'submit' | null
+export type OverlayKind = 'search' | 'filters' | 'navigator' | 'discover' | 'submit' | 'help' | null
 
 /** A connection the scene currently draws. Purely a line between two equals. */
 export interface VisibleRelationship {
@@ -373,7 +373,8 @@ export const useGalaxyStore = create<GalaxyState>((set, get) => ({
   setFilters: (patch) => set((s) => ({ filters: { ...s.filters, ...patch } })),
   clearFilters: () => set({ filters: EMPTY_FILTERS }),
   setDiscovery: (patch) => set((s) => ({ discovery: { ...s.discovery, ...patch } })),
-  startDiscovery: (mode) =>
+  startDiscovery: (mode) => {
+    interactionEvents.emit({ type: 'discovery:start', mode })
     set((s) => ({
       overlay: null,
       highlight: null,
@@ -382,8 +383,13 @@ export const useGalaxyStore = create<GalaxyState>((set, get) => ({
       // Random jumps start a fresh trail; relationship-driven modes extend it.
       activeDiscoveryPath: mode === 'random' || mode === 'universe' ? [] : s.activeDiscoveryPath,
       discovery: { mode, phase: 'scanning', candidateId: null, targetId: null, reason: null },
-    })),
-  endDiscovery: () => set((s) => ({ discovery: { ...s.discovery, phase: 'idle', candidateId: null } })),
+    }))
+  },
+  endDiscovery: () => {
+    const { discovery } = get()
+    if (discovery.phase !== 'idle') interactionEvents.emit({ type: 'discovery:complete', mode: discovery.mode, targetId: discovery.targetId })
+    set((s) => ({ discovery: { ...s.discovery, phase: 'idle', candidateId: null } }))
+  },
   setHighlight: (kind) => {
     const s = get()
     if (!kind) {
@@ -434,8 +440,8 @@ export const useGalaxyStore = create<GalaxyState>((set, get) => ({
   },
   finishIntro: () => {
     if (get().introPhase !== 'playing') return
-    const { firstVisit, onboardingDone } = useSettingsStore.getState()
-    if (firstVisit && !onboardingDone) set({ introPhase: 'onboarding' })
+    const { onboardingDone } = useSettingsStore.getState()
+    if (!onboardingDone) set({ introPhase: 'onboarding' })
     else set({ introPhase: 'complete', intro: { ...get().intro, chromeVisible: true } })
   },
   completeOnboarding: () => {

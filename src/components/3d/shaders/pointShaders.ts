@@ -312,3 +312,42 @@ export const connectionFragmentShader = /* glsl */ `
     #include <colorspace_fragment>
   }
 `
+
+/**
+ * Website point cloud: every website that isn't drawn as a full celestial
+ * object is one soft sprite here — sized by prominence, tinted by accent,
+ * lifted by search / relation emphasis, faded by distance and filters.
+ */
+export const websitePointVertexShader = /* glsl */ `
+  attribute float aSize;
+  attribute float aAlpha;
+  attribute float aBoost;
+  attribute vec3 aColor;
+  uniform float uPixelRatio;
+  uniform float uTime;
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    float size = aSize * (1.0 + 0.5 * aBoost) * uPixelRatio * (300.0 / max(-mv.z, 1.0));
+    gl_PointSize = clamp(size, 1.5, 26.0 * uPixelRatio);
+    gl_Position = projectionMatrix * mv;
+    float pulse = 1.0 + 0.08 * aBoost * sin(uTime * 3.0);
+    vColor = mix(aColor, vec3(1.0), 0.35 + 0.35 * aBoost);
+    vAlpha = aAlpha * pulse;
+  }
+`
+
+export const websitePointFragmentShader = /* glsl */ `
+  varying vec3 vColor;
+  varying float vAlpha;
+  void main() {
+    float d = length(gl_PointCoord - 0.5) * 2.0;
+    if (d > 1.0) discard;
+    float core = exp(-d * d * 4.0);
+    float halo = exp(-d * 2.2) * 0.35;
+    float a = (core + halo) * vAlpha;
+    gl_FragColor = vec4(vColor * a, a);
+    #include <colorspace_fragment>
+  }
+`

@@ -7,6 +7,7 @@ import { useGalaxyStore } from '../../store/galaxyStore'
 import type { CelestialObjectType, WebsiteDefinition } from '../../types/galaxy'
 import { accentFor, glyphFor, importanceFor, urlFor } from '../../utils/celestial'
 import { interactionEvents } from '../../utils/interaction'
+import { shareUrl } from '../../lib/router'
 import { AlternativeWebsites } from '../discovery/AlternativeWebsites'
 import { IntegrationWebsites } from '../discovery/IntegrationWebsites'
 import { RecommendationPanel } from '../discovery/RecommendationPanel'
@@ -49,6 +50,25 @@ export function WebsiteInfoPanel() {
 
   const [openingId, setOpeningId] = useState<string | null>(null)
   const opening = openingId !== null && openingId === website?.id
+  const [shared, setShared] = useState<'idle' | 'copied' | 'failed'>('idle')
+
+  const share = async () => {
+    if (!website) return
+    const url = shareUrl()
+    const data = { title: `${website.name} · The WebGalaxy`, text: website.description ?? '', url }
+    try {
+      if (typeof navigator.share === 'function' && (typeof navigator.canShare !== 'function' || navigator.canShare(data))) {
+        await navigator.share(data)
+        return
+      }
+      await navigator.clipboard.writeText(url)
+      setShared('copied')
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') return
+      setShared('failed')
+    }
+    window.setTimeout(() => setShared('idle'), 2200)
+  }
 
   const url = website ? urlFor(website) : null
   const accent = website ? accentFor(website) : '#c9d4ff'
@@ -79,14 +99,14 @@ export function WebsiteInfoPanel() {
       aria-hidden={!visible}
       className={[
         'absolute z-20',
-        'inset-x-4 bottom-4 sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:right-9 sm:w-[300px] sm:-translate-y-1/2',
+        'inset-x-3 bottom-20 sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:right-9 sm:w-[300px] sm:-translate-y-1/2',
         'transition-[opacity,transform] duration-700 ease-out',
         visible ? 'opacity-100 translate-x-0' : 'pointer-events-none opacity-0 sm:translate-x-3',
       ].join(' ')}
     >
       <div
         // Scrolls inside itself when the connections make it tall; never under the header.
-        className="relative max-h-[46vh] overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-[#070a18]/60 px-6 pt-6 pb-5 backdrop-blur-md sm:max-h-[calc(100vh-9.5rem)]"
+        className="relative max-h-[42vh] overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-[#070a18]/60 px-6 pt-6 pb-5 backdrop-blur-md sm:max-h-[calc(100vh-9.5rem)]"
         style={{
           boxShadow: `0 0 0 1px rgba(255,255,255,0.02) inset, 0 24px 70px rgba(0,0,0,0.5), 0 0 40px ${accent}22`,
         }}
@@ -212,10 +232,16 @@ export function WebsiteInfoPanel() {
           >
             {opening ? 'Opening…' : url ? 'Visit Website' : 'No link'}
           </button>
-          <button type="button" onClick={clearWebsite} className={`${buttonBase} px-4 py-2.5 text-space-300/80 hover:text-white`}>
+          <button type="button" onClick={share} disabled={!visible} aria-label="Share this website" className={`${buttonBase} px-3 py-2.5 text-space-300/80 hover:text-white`}>
+            Share
+          </button>
+          <button type="button" onClick={clearWebsite} className={`${buttonBase} px-3 py-2.5 text-space-300/80 hover:text-white`}>
             Back
           </button>
         </div>
+        <p role="status" aria-live="polite" className={`mt-2 h-4 text-center font-sans text-[10.5px] tracking-[0.18em] uppercase text-space-300/70 transition-opacity ${shared === 'idle' ? 'opacity-0' : 'opacity-100'}`}>
+          {shared === 'copied' ? 'Link copied.' : shared === 'failed' ? 'Copy the address bar to share.' : ''}
+        </p>
       </div>
     </section>
   )

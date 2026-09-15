@@ -14,7 +14,14 @@ interface RecommendationPanelProps {
  * Suggestions assist the journey; they never replace the scene.
  */
 export function RecommendationPanel({ recommendations, fromUniverseId }: RecommendationPanelProps) {
-  if (!recommendations.length) return null
+  if (!recommendations.length) {
+    return (
+      <section aria-label="You may also explore" className="mt-5">
+        <p className={`${eyebrow} pb-1.5`}>You may also explore</p>
+        <p className="font-sans text-[12px] leading-5 text-space-300/70">We haven't discovered a connection yet.</p>
+      </section>
+    )
+  }
   return (
     <section aria-label="You may also explore" className="mt-5">
       <p className={`${eyebrow} pb-1.5`}>You may also explore</p>

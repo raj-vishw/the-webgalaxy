@@ -43,7 +43,7 @@ export function DataStatus() {
       ) : (
         <div className="pointer-events-auto flex max-w-[520px] flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-white/10 bg-[#070a18]/75 px-5 py-3 backdrop-blur-md">
           <div className="min-w-0 flex-1">
-            <p className="font-sans text-[13px] text-white/90">Unable to load some galaxy data.</p>
+            <p className="font-sans text-[13px] text-white/90">The galaxy connection was interrupted.</p>
             <p className="mt-0.5 font-sans text-[11px] leading-4 text-space-300/70">
               {cachedNote}
               {error ? ` (${error})` : ''}

@@ -1,0 +1,10 @@
+{
+  "name": "The WebGalaxy",
+  "short_name": "WebGalaxy",
+  "description": "Explore the internet as a living universe.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020308",
+  "theme_color": "#020308",
+  "icons": [{ "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }]
+}

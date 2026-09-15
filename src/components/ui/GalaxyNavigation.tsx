@@ -11,7 +11,7 @@ export function GalaxyNavigation() {
   const filtersActive = useGalaxyStore((s) => hasActiveFilters(s.filters))
   const toggleOverlay = useGalaxyStore((s) => s.toggleOverlay)
 
-  const link = (label: string, kind: 'navigator' | 'discover' | 'search' | 'filters' | 'submit', hint?: string) => (
+  const link = (label: string, kind: 'navigator' | 'discover' | 'search' | 'filters' | 'submit' | 'help', hint?: string) => (
     <button
       key={kind}
       type="button"
@@ -42,17 +42,18 @@ export function GalaxyNavigation() {
     >
       <a
         href="/"
-        className={`min-w-0 truncate font-sans text-[10px] max-sm:sr-only font-medium tracking-[0.2em] whitespace-nowrap text-white/85 transition-colors hover:text-white sm:text-[12px] sm:tracking-[0.3em] ${focusRing}`}
+        className={`min-w-0 truncate font-sans text-[10px] font-medium tracking-[0.2em] whitespace-nowrap text-white/85 transition-colors hover:text-white sm:text-[12px] sm:tracking-[0.3em] ${focusRing}`}
         style={{ textShadow: '0 0 16px rgba(190,205,255,0.35)' }}
       >
         THE WEBGALAXY
       </a>
-      <nav aria-label="Discovery" className="flex shrink-0 items-center gap-3 sm:gap-7">
+      <nav aria-label="Discovery" className="hidden shrink-0 items-center gap-3 sm:flex sm:gap-7">
         {link('Explore', 'navigator')}
         {link('Discover', 'discover')}
         {link('Search', 'search', isMac ? '⌘K' : '/')}
         {link('Filter', 'filters')}
         {link('+ Add', 'submit')}
+        {link('?', 'help')}
       </nav>
     </header>
   )

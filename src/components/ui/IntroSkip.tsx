@@ -19,6 +19,7 @@ export function IntroSkip() {
     <button
       type="button"
       onClick={skipIntro}
+      aria-label="Skip the flight"
       className={[
         'absolute right-6 bottom-6 z-20 sm:right-9 sm:bottom-8',
         'font-sans text-[11px] tracking-[0.22em] uppercase text-space-300/70',

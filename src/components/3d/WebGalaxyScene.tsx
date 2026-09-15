@@ -4,7 +4,9 @@ import { useQualityProfile } from '../../hooks/useQualityProfile'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { BackgroundNebula } from './BackgroundNebula'
 import { CameraController } from './camera/CameraController'
+import { AdaptiveQuality } from './AdaptiveQuality'
 import { DevBridge } from './DevBridge'
+import { PerfMonitor } from './PerfMonitor'
 import { EmphasisBridge } from './EmphasisBridge'
 import { GalaxyInteraction } from './interaction/GalaxyInteraction'
 import { PointerTracker } from './PointerTracker'
@@ -40,6 +42,8 @@ export function WebGalaxyScene() {
       <GalaxyInteraction reducedMotion={profile.reducedMotion} />
       <EmphasisBridge />
       {import.meta.env.DEV && <DevBridge />}
+      {import.meta.env.DEV && <PerfMonitor />}
+      <AdaptiveQuality />
       <CameraController profile={profile} />
       <BackgroundNebula />
       <StarField profile={profile} pixelRatio={pixelRatio} />

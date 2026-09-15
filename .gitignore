@@ -13,3 +13,5 @@ backend/data/
 backend/dist/
 admin/dist/
 coverage/
+
+*.png

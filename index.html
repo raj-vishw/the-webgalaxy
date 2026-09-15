@@ -4,9 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#020308" />
-    <meta name="description" content="The WebGalaxy — explore the internet as a living universe." />
+    <meta name="color-scheme" content="dark" />
+    <title>The WebGalaxy — Explore the Internet as a Universe</title>
+    <meta name="description" content="The WebGalaxy is an immersive 3D map of the web: every universe is a category, every celestial object a website. Explore, search, follow connections and discover what's next." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>The WebGalaxy</title>
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="The WebGalaxy" />
+    <meta property="og:title" content="The WebGalaxy — Explore the Internet as a Universe" />
+    <meta property="og:description" content="An immersive 3D map of the web. Every universe is a category, every celestial object a website." />
+    <meta property="og:image" content="/social.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="The WebGalaxy — Explore the Internet as a Universe" />
+    <meta name="twitter:description" content="An immersive 3D map of the web. Every universe is a category, every celestial object a website." />
+    <meta name="twitter:image" content="/social.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -15,7 +29,16 @@
     />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Semantic fallback for crawlers and for browsers without JavaScript. -->
+      <noscript>
+        <main style="font-family: Inter, system-ui, sans-serif; color: #dfe6ff; background: #020308; min-height: 100vh; padding: 3rem 1.5rem; max-width: 40rem; margin: 0 auto">
+          <h1 style="font-weight: 300; letter-spacing: 0.3em">THE WEBGALAXY</h1>
+          <p>Explore the internet as a living universe. The WebGalaxy is an interactive 3D map of the web: every universe is a category of websites, every celestial object a website — with connections between related, alternative and complementary sites.</p>
+          <p>The experience needs JavaScript and WebGL. Universes: AI, Cybersecurity, Development, Design, Gaming, Education, Science, Finance, Music, Entertainment.</p>
+        </main>
+      </noscript>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

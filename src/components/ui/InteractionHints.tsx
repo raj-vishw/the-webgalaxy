@@ -53,7 +53,7 @@ export function InteractionHints() {
     <div
       aria-hidden={!visible}
       className={[
-        'pointer-events-none absolute inset-x-0 bottom-14 z-10 text-center sm:bottom-8',
+        'pointer-events-none absolute inset-x-0 bottom-24 z-10 text-center sm:bottom-8',
         'font-sans text-[11px] leading-5 tracking-[0.18em] uppercase text-space-300/65',
         'transition-opacity duration-[1200ms]',
         visible ? 'opacity-100' : 'opacity-0',

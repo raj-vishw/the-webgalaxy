@@ -5,8 +5,10 @@ import { expandSearch } from '../../services/discoveryService'
 import { useCatalogStore } from '../../store/catalogStore'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { accentFor } from '../../utils/celestial'
+import { interactionEvents } from '../../utils/interaction'
 import { galaxyNavigation } from '../../utils/navigation'
 import type { SearchMatch } from '../../utils/search'
+import { matchActions, type ActionMatch } from './actions'
 import { EmergingWebsites } from '../discovery/EmergingWebsites'
 import { TrendingWebsites } from '../discovery/TrendingWebsites'
 import { eyebrow, focusRing, glassPanel } from '../ui/panel'
@@ -34,11 +36,12 @@ export function SearchOverlay() {
   const [activeIndex, setActiveIndex] = useState(0)
 
   const { results, pending } = useSearch(query, filters, open)
+  const actions = useMemo(() => (open ? matchActions(query) : []), [query, open])
   // What the top match connects to, shown after the direct results.
   const expansion = useMemo(() => expandSearch(results, query), [results, query])
-  const flat = useMemo<SearchMatch[]>(
-    () => [...results.universes, ...results.websites, ...expansion.related, ...expansion.alternatives],
-    [results, expansion],
+  const flat = useMemo<(SearchMatch | ActionMatch)[]>(
+    () => [...actions, ...results.universes, ...results.websites, ...expansion.related, ...expansion.alternatives],
+    [actions, results, expansion],
   )
   const hasQuery = query.trim().length > 0
 
@@ -57,9 +60,16 @@ export function SearchOverlay() {
     setActiveIndex(0)
   }
 
-  const choose = (match: SearchMatch) => {
+  const choose = (match: SearchMatch | ActionMatch) => {
+    if (match.kind === 'action') {
+      closeOverlay()
+      setSearchQuery('')
+      match.run()
+      return
+    }
     // A search that led somewhere is a session signal for later suggestions.
     recordSearch(query)
+    interactionEvents.emit({ type: 'search:perform', query, results: flat.length })
     closeOverlay()
     setSearchQuery('')
     // A backend hit the catalogue hasn't got yet (freshly published) is added on the fly.
@@ -130,6 +140,7 @@ export function SearchOverlay() {
             <SearchResults
               results={results}
               expansion={expansion}
+              actions={actions}
               flat={flat}
               listboxId={listboxId}
               activeIndex={activeIndex}
@@ -158,7 +169,7 @@ export function SearchOverlay() {
                     </li>
                   ))}
                 </ul>
-                <p className={`${eyebrow} pt-4 pb-2`}>Try searching for</p>
+                <p className={`${eyebrow} pt-4 pb-2`}>Try searching for <span className="normal-case tracking-normal text-space-300/45">· type &gt; for actions</span></p>
                 <ul className="flex flex-wrap gap-1.5">
                   {searchSuggestions.map((s) => (
                     <li key={s}>

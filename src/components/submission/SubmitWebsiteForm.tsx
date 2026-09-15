@@ -3,6 +3,7 @@ import { ApiError } from '../../services/api'
 import { submissionApi } from '../../services/submissionApi'
 import { useCatalogStore } from '../../store/catalogStore'
 import { useGalaxyStore } from '../../store/galaxyStore'
+import { interactionEvents } from '../../utils/interaction'
 import { galaxyNavigation } from '../../utils/navigation'
 import { eyebrow, focusRing, ghostButton, glassPanel } from '../ui/panel'
 
@@ -113,6 +114,7 @@ export function SubmitWebsiteForm() {
         requestedUniverseId: fields.requestedUniverseId || undefined,
         tags,
       })
+      interactionEvents.emit({ type: 'submission:create', websiteName: submission.websiteName })
       setState({ kind: 'done', name: submission.websiteName })
     } catch (error) {
       if (error instanceof ApiError && error.code === 'WEBSITE_EXISTS') {
@@ -120,7 +122,7 @@ export function SubmitWebsiteForm() {
         setState({ kind: 'idle' })
         return
       }
-      setState({ kind: 'failed', message: error instanceof ApiError ? error.message : 'The submission could not be sent.' })
+      setState({ kind: 'failed', message: error instanceof ApiError && !error.isUnavailable ? `We couldn't add this website. ${error.message}` : "We couldn't add this website — the galaxy connection was interrupted. Review your submission and try again." })
     }
   }
 

@@ -18,7 +18,14 @@ interface RelatedWebsitesProps {
  */
 export function RelatedWebsites({ website }: RelatedWebsitesProps) {
   const related = useMemo(() => getRelatedWebsites(website.id, MAX_VISIBLE_RELATIONSHIPS), [website.id])
-  if (!related.length) return null
+  if (!related.length) {
+    return (
+      <section aria-label="Related websites" className="mt-5">
+        <p className={`${eyebrow} pb-1.5`}>Related</p>
+        <p className="font-sans text-[12px] leading-5 text-space-300/70">This object appears to be travelling alone.</p>
+      </section>
+    )
+  }
   const summary = related.map((r) => `${r.website.name} (${RELATIONSHIP_LABEL[r.type].toLowerCase()})`).join(', ')
 
   return (

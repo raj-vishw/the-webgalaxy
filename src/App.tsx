@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { PerfReadout } from './components/3d/PerfMonitor'
 import { WebGalaxyScene } from './components/3d/WebGalaxyScene'
 import { DataStatus } from './components/data/DataStatus'
 import { Landing } from './components/entry/Landing'
@@ -9,21 +10,32 @@ import { DiscoveryMenu } from './components/discovery/DiscoveryMenu'
 import { FilterPanel } from './components/filters/FilterPanel'
 import { GalaxyMinimap } from './components/navigation/GalaxyMinimap'
 import { LocationIndicator } from './components/navigation/LocationIndicator'
+import { MobileBar } from './components/ui/MobileBar'
 import { UniverseNavigator } from './components/navigation/UniverseNavigator'
 import { SearchOverlay } from './components/search/SearchOverlay'
 import { SubmitWebsiteForm } from './components/submission/SubmitWebsiteForm'
 import { GalaxyNavigation } from './components/ui/GalaxyNavigation'
+import { HelpMenu } from './components/ui/HelpMenu'
 import { InteractionHints } from './components/ui/InteractionHints'
 import { IntroSkip } from './components/ui/IntroSkip'
 import { UniverseInfo } from './components/ui/UniverseInfo'
 import { WebsiteInfoPanel } from './components/ui/WebsiteInfoPanel'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+import { applyLocation, startRouter } from './lib/router'
 import { useCatalogStore } from './store/catalogStore'
 import { useGalaxyStore } from './store/galaxyStore'
 import { locationTitle } from './utils/navigation'
 
 export default function App() {
   useKeyboardShortcuts()
+  // Development-only performance readout (P key or ?perf).
+  const [perf, setPerf] = useState(() => import.meta.env.DEV && window.location.search.includes('perf'))
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const toggle = () => setPerf((v) => !v)
+    window.addEventListener('webgalaxy:perf', toggle)
+    return () => window.removeEventListener('webgalaxy:perf', toggle)
+  }, [])
 
   // Progressive load: the scene is already rendering from cached/bundled
   // data; the API layers in universes, then websites, then connections.
@@ -41,14 +53,23 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [])
 
-  // Route-shaped title so the browser tab says where you are (no router yet).
+  // The address bar follows the explorer; a deep link is applied once the
+  // galaxy is entered (the flight there is the same as any other).
   useEffect(() => {
     document.title = locationTitle()
-    return useGalaxyStore.subscribe((state, previous) => {
+    const stopRouter = startRouter()
+    const unsubscribe = useGalaxyStore.subscribe((state, previous) => {
       if (state.viewMode !== previous.viewMode || state.activeUniverseId !== previous.activeUniverseId || state.selectedWebsiteId !== previous.selectedWebsiteId) {
         document.title = locationTitle()
       }
+      if (state.introPhase === 'complete' && previous.introPhase !== 'complete' && window.location.pathname !== '/') {
+        window.setTimeout(() => applyLocation(), 150)
+      }
     })
+    return () => {
+      stopRouter()
+      unsubscribe()
+    }
   }, [])
 
   return (
@@ -57,6 +78,7 @@ export default function App() {
       <Landing />
       <Onboarding />
       <GalaxyNavigation />
+      <MobileBar />
       <LocationIndicator />
       <UniverseInfo />
       <WebsiteInfoPanel />
@@ -65,12 +87,14 @@ export default function App() {
       <UniverseNavigator />
       <DiscoveryMenu />
       <FilterPanel />
+      <HelpMenu />
       <SearchOverlay />
       <SubmitWebsiteForm />
       <DataStatus />
       <DiscoveryAnimation />
       <IntroSkip />
       <LoadingScreen />
+      {import.meta.env.DEV && <PerfReadout visible={perf} />}
     </main>
   )
 }

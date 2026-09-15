@@ -17,7 +17,9 @@
     "test:api": "npm test --workspace backend",
     "db:migrate": "npm run db:migrate --workspace backend",
     "db:seed": "npm run db:seed --workspace backend",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "node e2e/galaxy.e2e.mjs && node e2e/platform.e2e.mjs",
+    "test:e2e:mobile": "node e2e/galaxy.e2e.mjs --mobile && node e2e/platform.e2e.mjs --mobile"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
@@ -39,6 +41,7 @@
     "concurrently": "^10.0.5",
     "jsdom": "^30.0.1",
     "oxlint": "^1.81.0",
+    "playwright-core": "^1.63.0",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",

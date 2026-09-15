@@ -49,7 +49,7 @@ export function Onboarding() {
         </h2>
         <p className="mt-3 font-sans text-[13.5px] leading-6 text-space-100/80">{CARDS[index].body}</p>
         <div className="mt-7 flex items-center justify-between">
-          <button type="button" onClick={complete} className={`rounded-sm font-sans text-[11px] tracking-[0.2em] uppercase text-space-300/70 transition-colors hover:text-white ${focusRing}`}>
+          <button type="button" onClick={complete} aria-label="Skip the welcome" className={`rounded-sm font-sans text-[11px] tracking-[0.2em] uppercase text-space-300/70 transition-colors hover:text-white ${focusRing}`}>
             Skip
           </button>
           <button type="button" onClick={() => (last ? complete() : setIndex(index + 1))} className={`${ghostButton} border-white/30`}>

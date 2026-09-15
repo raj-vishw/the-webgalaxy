@@ -50,10 +50,10 @@ export function locationPath(): string {
 }
 
 export function parseLocationPath(path: string): { universeId?: string; websiteId?: string } {
-  const universe = path.match(/^\/universe\/([\w-]+)/)
-  if (universe) return { universeId: universe[1] }
-  const website = path.match(/^\/website\/([\w-]+)/)
-  if (website) return { websiteId: website[1] }
+  const universe = path.match(/^\/universe\/([\w-]+)\/?$/)
+  if (universe) return { universeId: universe[1].toLowerCase() }
+  const website = path.match(/^\/website\/([\w-]+)\/?$/)
+  if (website) return { websiteId: website[1].toLowerCase() }
   return {}
 }
 

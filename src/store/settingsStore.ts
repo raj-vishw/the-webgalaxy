@@ -17,6 +17,9 @@ interface Persisted {
 export interface SettingsState extends Persisted {
   /** True on the very first load on this device (until the galaxy is entered). */
   firstVisit: boolean
+  /** How many tiers Auto has stepped down this session after sustained low frame rates. */
+  autoDowngrade: number
+  setAutoDowngrade: (steps: number) => void
   setGraphics: (graphics: GraphicsSetting) => void
   recordVisit: () => void
   setOnboardingDone: (done: boolean) => void
@@ -53,6 +56,8 @@ const initial = typeof window !== 'undefined' ? load() : DEFAULTS
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   ...initial,
   firstVisit: initial.visits === 0,
+  autoDowngrade: 0,
+  setAutoDowngrade: (autoDowngrade) => set({ autoDowngrade }),
   setGraphics: (graphics) => {
     set({ graphics })
     save({ graphics, visits: get().visits, onboardingDone: get().onboardingDone })

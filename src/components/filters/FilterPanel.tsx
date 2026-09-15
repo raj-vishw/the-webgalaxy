@@ -35,7 +35,7 @@ export function FilterPanel() {
       className={[
         glassPanel,
         'absolute z-30 w-[calc(100%-1.5rem)] max-w-[300px] px-5 pt-4 pb-5',
-        'inset-x-3 bottom-3 sm:inset-x-auto sm:bottom-auto sm:top-16 sm:right-9',
+        'inset-x-3 bottom-20 sm:inset-x-auto sm:bottom-auto sm:top-16 sm:right-9',
         'transition-[opacity,transform] duration-300 ease-out',
         open ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 translate-y-2 sm:-translate-y-1',
       ].join(' ')}

@@ -10,7 +10,8 @@ const isTyping = (target: EventTarget | null) => {
 
 /**
  * Global shortcuts:  /  or Ctrl/⌘+K search · F filters · E explore · D discover ·
- * M map · Esc steps back (closes overlays first, then website → universe → galaxy).
+ * R random · M map · A add · ? help · B back · G galaxy · Esc steps back
+ * (closes overlays first, then website → universe → galaxy).
  */
 export function useKeyboardShortcuts() {
   useEffect(() => {
@@ -54,6 +55,25 @@ export function useKeyboardShortcuts() {
         case 'a':
         case 'A':
           store.toggleOverlay('submit')
+          break
+        case 'r':
+        case 'R':
+          store.startDiscovery('random')
+          break
+        case 'b':
+        case 'B':
+          store.goBack()
+          break
+        case 'g':
+        case 'G':
+          if (store.viewMode !== 'galaxy') store.leaveUniverse()
+          break
+        case '?':
+          store.toggleOverlay('help')
+          break
+        case 'p':
+        case 'P':
+          if (import.meta.env.DEV) window.dispatchEvent(new CustomEvent('webgalaxy:perf'))
           break
       }
     }
