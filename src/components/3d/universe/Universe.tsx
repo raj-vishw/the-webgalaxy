@@ -8,6 +8,7 @@ import { labelDeclutter } from '../../../lib/labelDeclutter'
 import { buildUniverseGeometry } from '../../../lib/universeGeometry'
 import { sceneMotion } from '../../../lib/sceneMotion'
 import { interiorScale } from '../../../utils/generatePositions'
+import { driftedPosition } from '../../../utils/universeDrift'
 import { useWebsitesInUniverse } from '../../../store/catalogStore'
 import { useGalaxyStore } from '../../../store/galaxyStore'
 import type { UniverseDefinition } from '../../../types/galaxy'
@@ -79,6 +80,7 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
     if (!root || !spin) return
     const frame = frameRef.current
 
+    driftedPosition(definition, sceneMotion.driftTime, root.position)
     frame.reveal = MathUtils.smoothstep(sceneMotion.universeReveal, revealOffset, revealOffset + REVEAL_WINDOW)
     const distance = root.getWorldPosition(worldPosition).distanceTo(camera.position)
     const proximity = 1 - MathUtils.smoothstep(distance, reach * 2.5, reach * 5)

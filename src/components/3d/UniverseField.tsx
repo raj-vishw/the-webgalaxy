@@ -2,7 +2,9 @@ import { useFrame } from '@react-three/fiber'
 import { useParallax } from '../../hooks/useParallax'
 import type { QualityProfile } from '../../hooks/useQualityProfile'
 import { labelDeclutter } from '../../lib/labelDeclutter'
+import { sceneMotion } from '../../lib/sceneMotion'
 import { useUniverses } from '../../store/catalogStore'
+import { useGalaxyStore } from '../../store/galaxyStore'
 import { Universe } from './universe/Universe'
 
 interface UniverseFieldProps {
@@ -20,6 +22,11 @@ const STAGGER_SPAN = 0.55
 export function UniverseField({ profile, pixelRatio }: UniverseFieldProps) {
   const groupRef = useParallax(1.2)
   const universes = useUniverses()
+  // The universes wander slowly while the galaxy is viewed as a whole; the
+  // moment one is entered the clock pauses so it sits still under the camera.
+  useFrame((_, delta) => {
+    if (useGalaxyStore.getState().viewMode === 'galaxy') sceneMotion.driftTime += delta * sceneMotion.motionScale
+  }, -2)
   // Universes report their label rectangles at priority -1; decide overlaps
   // once they all have, so every label reads the verdict next frame.
   useFrame(() => labelDeclutter.resolve(), 0)

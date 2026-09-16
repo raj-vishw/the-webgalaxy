@@ -17,6 +17,8 @@ export const sceneMotion = {
   dragging: false,
   /** Global multiplier on continuous motion (orbits, drift, spin); reduced-motion lowers it. */
   motionScale: 1,
+  /** Clock behind the universes' slow wander; advances only in the galaxy overview so an entered universe holds still. */
+  driftTime: 0,
   /**
    * Visual emphasis driven by search, discovery and travel: emphasised ids
    * glow, everything else quietens by `dimOthers`. Written by `EmphasisBridge`

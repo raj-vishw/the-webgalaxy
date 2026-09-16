@@ -1,5 +1,7 @@
+import { useFrame } from '@react-three/fiber'
 import gsap from 'gsap'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import type { Group } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import { useLogoAtlas } from '../../../lib/logoAtlas'
 import { sceneMotion } from '../../../lib/sceneMotion'
@@ -9,6 +11,7 @@ import type { UniverseDefinition } from '../../../types/galaxy'
 import { importanceFor } from '../../../utils/celestial'
 import { generateOrbits } from '../../../utils/generateOrbits'
 import { generatePositions } from '../../../utils/generatePositions'
+import { driftedPosition } from '../../../utils/universeDrift'
 import { CelestialObject } from '../celestial/CelestialObject'
 import { NeighbourhoodCaptions } from './NeighbourhoodCaptions'
 import { WebsitePoints } from './WebsitePoints'
@@ -44,6 +47,11 @@ const NAMED_IN_UNIVERSE: Record<QualityProfile['tier'], number> = { high: 8, med
 export function UniverseWebsites({ universe, profile, pixelRatio }: UniverseWebsitesProps) {
   const active = useGalaxyStore((s) => s.activeUniverseId === universe.id)
   const websites = useWebsitesInUniverse(universe.id)
+  // The websites ride along with their universe's slow wander.
+  const groupRef = useRef<Group>(null)
+  useFrame(() => {
+    if (groupRef.current) driftedPosition(universe, sceneMotion.driftTime, groupRef.current.position)
+  }, -2)
   // Icons are fetched only for the universe being explored (and stay cached).
   const atlas = useLogoAtlas(universe.id, active)
   // Websites that must be full objects regardless of budget, as one stable key.
@@ -107,7 +115,7 @@ export function UniverseWebsites({ universe, profile, pixelRatio }: UniverseWebs
   }, [active, universe.id])
 
   return (
-    <group position={universe.position as [number, number, number]}>
+    <group ref={groupRef} position={universe.position as [number, number, number]}>
       {detailed.map((website) => {
         const orbit = orbits.get(website.id)
         if (!orbit) return null
