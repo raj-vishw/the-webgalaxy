@@ -7,6 +7,7 @@ import { accentFor, urlFor } from '../../utils/celestial'
 import { searchGalaxy } from '../../utils/search'
 import { EMPTY_FILTERS } from '../../utils/filtering'
 import { focusRing } from '../ui/panel'
+import { Attribution } from '../ui/Attribution'
 
 interface FallbackGalaxyProps {
   /** Why the list is showing: no WebGL, or the visitor asked for it. */
@@ -114,6 +115,7 @@ export function FallbackGalaxy({ reason }: FallbackGalaxyProps) {
             </section>
           ))
         )}
+        <Attribution className="mt-10" />
       </div>
     </main>
   )

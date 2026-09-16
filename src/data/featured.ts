@@ -3,7 +3,7 @@
  * phase replaces this with real discovery signals; for now it is hand-curated
  * and carries no ranking meaning between universes.
  */
-export const featuredWebsiteIds = ['huggingface', 'tryhackme', 'framer', 'freecodecamp', 'letterboxd']
+export const featuredWebsiteIds = ['huggingface', 'tryhackme', 'framer', 'freecodecamp', 'letterboxd', 'allrecipes', 'nytimes', 'openai']
 
 /** Example queries suggested when the search box is empty. */
-export const searchSuggestions = ['AI tools', 'coding', 'security', 'design', 'learn', 'music']
+export const searchSuggestions = ['AI tools', 'coding', 'news', 'recipes', 'travel', 'health', 'sports', 'shopping', 'music']

@@ -11,7 +11,7 @@ export function UniverseLabel({ name, hovered }: UniverseLabelProps) {
   return (
     <span
       className={[
-        'block select-none whitespace-nowrap text-center font-sans text-[11px] tracking-[0.2em] uppercase sm:text-[13px] sm:tracking-[0.22em]',
+        'block select-none whitespace-nowrap text-center font-sans text-[10px] tracking-[0.14em] uppercase sm:text-[11px] sm:tracking-[0.16em]',
         'transition-[opacity,transform,text-shadow] duration-500 ease-out',
         hovered ? 'opacity-100 scale-105 text-white' : 'opacity-55 text-space-100',
       ].join(' ')}

@@ -15,6 +15,7 @@ The WebGalaxy is an immersive 3D map of the web. Every *universe* is a category 
 
 ## Features
 
+- 24 universes and 1 200+ websites out of the box: hand-curated flagships plus a directory import charted from Curlie.org (titles, descriptions, categories) and ranked with the Tranco list — see *Catalogue data*
 - Cinematic entry: loading → landing over the live galaxy → a short flight in (longer on the first visit) → a three-card welcome for first-timers, skippable throughout
 - Free exploration: drag, scroll/pinch, click/tap, hover labels, a top-down minimap, location indicator, keyboard shortcuts (`?` shows them)
 - Website panel: description, tags, prominence, connections (with an accessible text twin), *Explore Similar / Find Alternatives / Works With*, *You may also explore*, Visit, Share (native share or copied link)
@@ -76,6 +77,17 @@ Copy the examples and adjust; `.env` files are git-ignored.
 
 Only `VITE_*` variables reach the browser — never put secrets in the frontend files. In production the API refuses to start with default secrets or without `DATABASE_URL`.
 
+## Catalogue data
+
+The bundled catalogue has two layers:
+
+- `src/data/websites.ts`, `universes.ts`, `relationships.ts` — hand-curated entries, edited by hand.
+- `src/data/directory.ts` — **generated** by `npm run import:curlie` from two free datasets (not in the repository; unpack them under `content/`, which is git-ignored):
+  - the [Curlie](https://curlie.org/download) directory dump (`content/curlie-rdf/`, TSV files) — the category tree plus an editorial title and description for every site, licensed CC BY 3.0;
+  - the [Tranco](https://tranco-list.eu/) top-1M list (`content/top-1m.csv`) — popularity ranks used to pick the best-known sites and set their prominence.
+
+  Only English topic categories are read (Regional, other languages and Adult are skipped); each Curlie category maps to a universe in the importer's rule table, and the best-ranked sites are taken round-robin across sub-topics so every universe stays varied (`--per-universe=50 --max-rank=150000` are the defaults). The directory ships as its own lazy chunk, so the first paint only carries the curated set, and `npm run db:seed` loads both layers into the database. Curlie's attribution is shown in the help menu and the list view — keep it if you keep the data.
+
 ## Database setup
 
 ```sh
@@ -125,4 +137,6 @@ Issues and pull requests are welcome once the repository is public. Keep the con
 
 ## License
 
-No license has been chosen yet — all rights reserved by the author until a `LICENSE` file is added. If you intend to open-source the project, add a `LICENSE` (MIT is the usual choice for this kind of app) and update this section.
+No license has been chosen yet for the code — all rights reserved by the author until a `LICENSE` file is added. If you intend to open-source the project, add a `LICENSE` (MIT is the usual choice for this kind of app) and update this section.
+
+The directory content in `src/data/directory.ts` (website titles and descriptions) comes from [Curlie.org](https://curlie.org/) under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/) and must keep its attribution; popularity ranks come from [Tranco](https://tranco-list.eu/).

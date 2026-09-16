@@ -13,7 +13,8 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "db:reset": "tsx scripts/seed.ts --reset",
-    "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts"
+    "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts",
+    "import:curlie": "tsx --tsconfig tsconfig.scripts.json scripts/import-curlie.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

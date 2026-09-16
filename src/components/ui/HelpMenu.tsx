@@ -2,6 +2,7 @@ import { resolveTier } from '../../hooks/useQualityProfile'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { useSettingsStore, type GraphicsSetting } from '../../store/settingsStore'
 import { eyebrow, focusRing, glassPanel } from './panel'
+import { Attribution } from './Attribution'
 
 const SHORTCUTS: [string, string][] = [
   ['/', 'Search'],
@@ -124,6 +125,7 @@ export function HelpMenu() {
           Accessible list view
         </a>
       </div>
+      <Attribution className="mt-4" />
     </section>
   )
 }

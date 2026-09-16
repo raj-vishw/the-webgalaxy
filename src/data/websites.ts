@@ -1,7 +1,10 @@
 import type { WebsiteDefinition } from '../types/galaxy'
 
 /**
- * Sample websites for demonstrating the celestial system.
+ * Hand-curated websites — the flagship entries of each universe. The much
+ * larger directory import lives in `directory.ts` and is loaded lazily by the
+ * catalogue store (and merged in by the seed), so it stays out of the first
+ * bundle.
  *
  * Every website simply exists inside the universe named by `universeId`.
  * `orbitAnchorId` on moons is a visual arrangement only — it does not make
@@ -108,4 +111,3 @@ export const websites: WebsiteDefinition[] = [
   { id: 'twitch', name: 'Twitch', url: 'https://www.twitch.tv', universeId: 'entertainment', objectType: 'planet', importance: 84, description: 'Live streaming for creators.', accent: '#9146ff', glyph: 'Tw', tags: ['streaming', 'live'] },
   { id: 'letterboxd', name: 'Letterboxd', url: 'https://letterboxd.com', universeId: 'entertainment', objectType: 'comet', importance: 62, description: 'Social film diary.', accent: '#40bcf4', glyph: 'Lb', tags: ['community'] },
 ]
-

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Group, MathUtils, PerspectiveCamera, Vector3 } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import { celestialRegistry } from '../../../lib/celestialRegistry'
+import { labelDeclutter } from '../../../lib/labelDeclutter'
 import { buildUniverseGeometry } from '../../../lib/universeGeometry'
 import { sceneMotion } from '../../../lib/sceneMotion'
 import { useGalaxyStore } from '../../../store/galaxyStore'
@@ -36,6 +37,7 @@ const DISTANT_DIM = 0.3
 const LABEL_GAP_PX = 12
 
 const worldPosition = new Vector3()
+const screenPosition = new Vector3()
 
 /**
  * One independent region of The WebGalaxy: the cosmic structure that gives it
@@ -64,6 +66,8 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
     if (!root) return
     return celestialRegistry.register(definition.id, root)
   }, [definition.id])
+
+  useEffect(() => () => labelDeclutter.remove(definition.id), [definition.id])
 
   useFrame(({ camera, size }, delta) => {
     const root = rootRef.current
@@ -99,7 +103,19 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
       const pxPerUnit = size.height / 2 / (distance * Math.tan(fov / 2))
       const offset = scale * pxPerUnit + LABEL_GAP_PX
       const proximityFade = MathUtils.smoothstep(distance, definition.scale * 3.2, definition.scale * 5)
-      label.style.opacity = String(frame.reveal * proximityFade * sceneMotion.labelReveal)
+      // Where the label lands on screen, for the shared declutter pass.
+      screenPosition.copy(worldPosition).project(camera)
+      const behind = screenPosition.z > 1
+      if (frame.labelBox[0] === 0 || frame.frames++ % 90 === 0) frame.labelBox = [label.offsetWidth, label.offsetHeight]
+      labelDeclutter.report(definition.id, {
+        x: ((screenPosition.x + 1) / 2) * size.width,
+        y: ((1 - screenPosition.y) / 2) * size.height + offset,
+        halfWidth: frame.labelBox[0] / 2,
+        halfHeight: frame.labelBox[1] / 2,
+        priority: (hovered ? 2 : 0) + (active ? 1 : 0) + (behind ? -10 : 0) - distance / 1000,
+      })
+      frame.label += ((labelDeclutter.isHidden(definition.id) || behind ? 0 : 1) - frame.label) * k
+      label.style.opacity = String(frame.reveal * proximityFade * sceneMotion.labelReveal * frame.label)
       label.style.transform = `translateY(${offset.toFixed(1)}px)`
     }
   }, -1)

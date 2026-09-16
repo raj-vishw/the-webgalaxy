@@ -1,17 +1,19 @@
 /**
  * `npm run db:seed [-- --reset]`
  *
- * Migrates the Phase 1–5 demo data into the database: universes, websites,
- * tags, relationships and the static trend snapshot — read from the
- * frontend's `src/data/*.ts` so there is exactly one copy of the catalogue.
+ * Migrates the bundled catalogue into the database: universes, websites
+ * (curated + directory import), tags, relationships and the static trend
+ * snapshot — read from the frontend's `src/data/*.ts` so there is exactly
+ * one copy of the catalogue.
  * Upserts by slug, so re-running refreshes the seeded rows without touching
  * content added through the admin. `--reset` truncates everything first.
  */
 import { sql } from 'drizzle-orm'
-import { relationships as seedRelationships } from '../../src/data/relationships.ts'
+import { directoryRelationships, directoryWebsites } from '../../src/data/directory.ts'
+import { relationships as curatedRelationships } from '../../src/data/relationships.ts'
 import { TRENDING_THRESHOLD, trends } from '../../src/data/trends.ts'
 import { universes as seedUniverses } from '../../src/data/universes.ts'
-import { websites as seedWebsites } from '../../src/data/websites.ts'
+import { websites as curatedWebsites } from '../../src/data/websites.ts'
 import { loadEnv } from '../src/config/env.ts'
 import { createDatabase } from '../src/db/client.ts'
 import { adminAuditLog, adminUsers, submissions, tags, universes, websiteRelationships, websiteTags, websites } from '../src/db/schema.ts'
@@ -22,6 +24,9 @@ import { hashString } from '../src/utils/slug.ts'
 import { parseWebsiteUrl } from '../src/utils/url.ts'
 
 const reset = process.argv.includes('--reset')
+/** Curated entries first: they win over a directory import of the same slug. */
+const seedWebsites = [...curatedWebsites, ...directoryWebsites]
+const seedRelationships = [...curatedRelationships, ...directoryRelationships]
 const env = loadEnv()
 const handle = await createDatabase({ databaseUrl: env.DATABASE_URL, pgliteDir: env.PGLITE_DIR })
 const { db } = handle

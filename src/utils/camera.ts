@@ -7,17 +7,21 @@ export interface CameraPose {
   target: Vector3
 }
 
-/** Resting overview for landscape viewports: in front of and above the galaxy. */
-const LANDSCAPE_DIRECTION = new Vector3(0, 34, 118).normalize()
+/**
+ * Resting overview for landscape viewports: in front of and above the galaxy,
+ * steep enough (~31°) that the four bands of universes read as separate rows.
+ */
+const LANDSCAPE_DIRECTION = new Vector3(0, 64, 106).normalize()
 /**
  * Portrait viewports look almost straight down from the side, so the galaxy's
  * long axis runs down the screen instead of being squeezed across it.
  */
 const PORTRAIT_DIRECTION = new Vector3(-0.174, 0.985, 0).normalize()
-const OVERVIEW_DISTANCE = 124
+/** Fits the layout envelope in `data/universes.ts` (x ±140, z −114…54). */
+const OVERVIEW_DISTANCE = 220
 const LANDSCAPE_TARGET = new Vector3(0, 0, 0)
 /** Centre of the layout's depth range, so the portrait framing is balanced. */
-const PORTRAIT_TARGET = new Vector3(0, 0, -20)
+const PORTRAIT_TARGET = new Vector3(0, 0, -30)
 
 /** Viewing distance when focusing a website, by object type (× size + base). */
 const WEBSITE_VIEW: Record<CelestialObjectType, { perSize: number; base: number }> = {
@@ -36,7 +40,7 @@ const UNIVERSE_VIEW_FACTOR = 3
  */
 export function overviewFor(aspect: number): CameraPose {
   if (aspect < 1) {
-    const factor = MathUtils.clamp(1.38 / aspect, 1.5, 3.6)
+    const factor = MathUtils.clamp(1.24 / aspect, 1.3, 3.2)
     const target = PORTRAIT_TARGET.clone()
     return { target, position: PORTRAIT_DIRECTION.clone().multiplyScalar(OVERVIEW_DISTANCE * factor).add(target) }
   }

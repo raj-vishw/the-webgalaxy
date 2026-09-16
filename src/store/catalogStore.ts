@@ -48,10 +48,10 @@ export interface CatalogState {
   upsertWebsites: (websites: WebsiteDefinition[]) => void
 }
 
-/** The bundled dataset, with the static trend snapshot folded into each website. */
-function bundledWebsites(): WebsiteDefinition[] {
+/** Bundled websites, with the static trend snapshot folded into each. */
+function bundledWebsites(list: WebsiteDefinition[]): WebsiteDefinition[] {
   const trendBySlug = new Map(staticTrends.map((t) => [t.websiteId, t]))
-  return staticWebsites.map((w) => {
+  return list.map((w) => {
     const trend = trendBySlug.get(w.id)
     return {
       ...w,
@@ -74,7 +74,7 @@ function bundledRelationships(): WebsiteRelationship[] {
 const cached = typeof window !== 'undefined' ? loadCatalogCache() : null
 const initial = cached
   ? { universes: cached.universes, websites: cached.websites, relationships: cached.relationships, source: 'cache' as const, fetchedAt: cached.fetchedAt }
-  : { universes: staticUniverses, websites: bundledWebsites(), relationships: bundledRelationships(), source: 'static' as const, fetchedAt: null }
+  : { universes: staticUniverses, websites: bundledWebsites(staticWebsites), relationships: bundledRelationships(), source: 'static' as const, fetchedAt: null }
 
 const describe = (error: unknown) =>
   error instanceof ApiError ? error.message : error instanceof Error ? error.message : 'Unknown error'
@@ -162,3 +162,18 @@ export function useWebsitesInUniverse(universeId: string | null): WebsiteDefinit
 
 /** Non-hook counterpart for services. */
 export const websitesInUniverse = (universeId: string) => getCatalog().websites.filter((w) => w.universeId === universeId)
+
+// The directory import (~1 200 websites) ships as its own chunk so the first
+// paint only carries the curated set; it joins the bundled fallback as soon
+// as it arrives, unless the API or the cache already provided the catalogue.
+if (initial.source === 'static' && typeof window !== 'undefined') {
+  void import('../data/directory').then(({ directoryWebsites, directoryRelationships }) => {
+    const state = useCatalogStore.getState()
+    if (state.source !== 'static') return
+    const known = new Set(state.websites.map((w) => w.id))
+    useCatalogStore.setState({
+      websites: [...state.websites, ...bundledWebsites(directoryWebsites.filter((w) => !known.has(w.id)))],
+      relationships: [...state.relationships, ...directoryRelationships],
+    })
+  })
+}
