@@ -37,10 +37,10 @@ const CONTENT = resolve(ROOT, 'content')
 const OUTPUT = resolve(ROOT, 'src/data/directory.ts')
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=') as [string, string]))
-const PER_UNIVERSE = Number(args['per-universe'] ?? 50)
-const MAX_RANK = Number(args['max-rank'] ?? 150_000)
+const PER_UNIVERSE = Number(args['per-universe'] ?? 90)
+const MAX_RANK = Number(args['max-rank'] ?? 300_000)
 /** Neighbourhoods per universe: enough to give it structure, few enough to read at a glance. */
-const TOPICS_PER_UNIVERSE = Number(args['topics'] ?? 7)
+const TOPICS_PER_UNIVERSE = Number(args['topics'] ?? 9)
 /** Comets are accents, not a population. */
 const COMETS_PER_UNIVERSE = 3
 /** Only these Curlie files hold English topic categories. */
@@ -63,6 +63,14 @@ const UNIVERSE_RULES: [prefix: string, universe: string][] = [
   ['Computers/Algorithms', 'development'],
   ['Computers/Data_Formats', 'development'],
   ['Computers/Software/Operating_Systems', 'development'],
+  ['Computers/Internet/On_the_Web/Online_Communities', 'communities'],
+  ['Computers/Internet/On_the_Web/Weblogs', 'communities'],
+  ['Computers/Internet/Chat', 'communities'],
+  ['Computers/Internet/Web_Design_and_Development', 'development'],
+  ['Computers/Internet', 'internet'],
+  ['Computers/Hardware', 'hardware'],
+  ['Shopping/Consumer_Electronics', 'hardware'],
+  ['Computers/Software', 'software'],
   ['Computers/Graphics', 'design'],
   ['Computers/CAD_and_CAM', 'design'],
   ['Arts/Design', 'design'],
@@ -71,6 +79,10 @@ const UNIVERSE_RULES: [prefix: string, universe: string][] = [
   ['Arts/Illustration', 'design'],
   ['Arts/Photography', 'design'],
   ['Arts/Digital', 'design'],
+  ['Arts/Literature', 'literature'],
+  ['Arts/Online_Writing', 'literature'],
+  ['Arts/Writers_Resources', 'literature'],
+  ['Shopping/Publications/Books', 'literature'],
   ['Arts/Music', 'music'],
   ['Shopping/Music', 'music'],
   ['Arts/Movies', 'entertainment'],
@@ -96,6 +108,29 @@ const UNIVERSE_RULES: [prefix: string, universe: string][] = [
   ['Shopping/Food', 'food'],
   ['Recreation/Travel', 'travel'],
   ['Business/Hospitality', 'travel'],
+  ['Society/Religion_and_Spirituality', 'religion'],
+  ['Society/Law', 'government'],
+  ['Society/Government', 'government'],
+  ['Society/Politics', 'government'],
+  ['Health/Medicine', 'medicine'],
+  ['Health/Conditions_and_Diseases', 'medicine'],
+  ['Health/Pharmacy', 'medicine'],
+  ['Reference/Museums', 'museums'],
+  ['Reference/Libraries', 'museums'],
+  ['Reference/Archives', 'museums'],
+  ['Recreation/Autos', 'vehicles'],
+  ['Recreation/Motorcycles', 'vehicles'],
+  ['Shopping/Vehicles', 'vehicles'],
+  ['Business/Automotive', 'vehicles'],
+  ['Science/Environment', 'nature'],
+  ['Science/Earth_Sciences', 'nature'],
+  ['Science/Biology/Ecology', 'nature'],
+  ['Recreation/Outdoors', 'nature'],
+  ['Shopping/Clothing', 'fashion'],
+  ['Shopping/Health/Beauty', 'fashion'],
+  ['Shopping/Jewelry', 'fashion'],
+  ['Business/Consumer_Goods_and_Services/Beauty', 'fashion'],
+  ['Business/Consumer_Goods_and_Services/Clothing', 'fashion'],
   ['Computers/', 'technology'],
   ['Science/', 'science'],
   ['Arts/', 'arts'],

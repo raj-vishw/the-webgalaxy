@@ -9,19 +9,19 @@ export interface CameraPose {
 
 /**
  * Resting overview for landscape viewports: in front of and above the galaxy,
- * steep enough (~31°) that the four bands of universes read as separate rows.
+ * steep enough (~40°) that the five bands of universes read as separate rows.
  */
-const LANDSCAPE_DIRECTION = new Vector3(0, 64, 106).normalize()
+const LANDSCAPE_DIRECTION = new Vector3(0, 80, 95).normalize()
 /**
  * Portrait viewports look almost straight down from the side, so the galaxy's
  * long axis runs down the screen instead of being squeezed across it.
  */
 const PORTRAIT_DIRECTION = new Vector3(-0.174, 0.985, 0).normalize()
-/** Fits the layout envelope in `data/universes.ts` (x ±140, z −114…54). */
-const OVERVIEW_DISTANCE = 220
+/** Fits the layout envelope in `data/universes.ts` (x ±165, z −132…60). */
+const OVERVIEW_DISTANCE = 275
 const LANDSCAPE_TARGET = new Vector3(0, 0, 0)
 /** Centre of the layout's depth range, so the portrait framing is balanced. */
-const PORTRAIT_TARGET = new Vector3(0, 0, -30)
+const PORTRAIT_TARGET = new Vector3(0, 0, -36)
 
 /** Viewing distance when focusing a website, by object type (× size + base). */
 const WEBSITE_VIEW: Record<CelestialObjectType, { perSize: number; base: number }> = {

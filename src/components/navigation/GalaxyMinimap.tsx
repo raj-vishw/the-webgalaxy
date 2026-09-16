@@ -9,9 +9,9 @@ const W = 176
 const H = 116
 const PAD = 14
 /** World extent (x/z) the map covers, centred on the layout envelope of `data/universes.ts`. */
-const RANGE_X = 155
-const RANGE_Z = 100
-const CENTER_Z = -30
+const RANGE_X = 180
+const RANGE_Z = 110
+const CENTER_Z = -36
 
 const toMap = (x: number, z: number) => ({
   x: PAD + ((x + RANGE_X) / (2 * RANGE_X)) * (W - PAD * 2),

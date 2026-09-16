@@ -45,6 +45,7 @@ export function WebsitePoints({ universe, websites, orbits, pixelRatio, interior
   const materialRef = useRef<ShaderMaterial>(null)
   const geometryRef = useRef<BufferGeometry>(null)
   const timeRef = useRef(0)
+  const frameRef = useRef(0)
 
   const entries = useMemo(
     () =>
@@ -153,6 +154,11 @@ export function WebsitePoints({ universe, websites, orbits, pixelRatio, interior
       material.blending = blending
       material.needsUpdate = true
     }
+    // Seen from afar the points are specks whose motion is invisible: a
+    // distant universe refreshes its cloud every fourth frame, staggered so
+    // the work spreads evenly. The entered universe updates every frame.
+    const stride = interactive ? 1 : 4
+    if (frameRef.current++ % stride !== universe.seed % stride) return
     const { emphasis, filter, relations } = sceneMotion
     const entry = sceneMotion.universeEntry[universe.id] ?? 1
     const pos = position.array as Float32Array
@@ -160,6 +166,8 @@ export function WebsitePoints({ universe, websites, orbits, pixelRatio, interior
     const boosts = boost.array as Float32Array
     alphasRef.current = alphas
     const t = timeRef.current
+    // From outside, one distance for the whole universe is accurate enough.
+    const universeDistance = interactive ? 0 : groupRef.current.getWorldPosition(worldPosition).distanceTo(camera.position)
 
     entries.forEach(({ website, orbit, fade }, i) => {
       const placeholder = placeholders[i]
@@ -175,7 +183,7 @@ export function WebsitePoints({ universe, websites, orbits, pixelRatio, interior
       pos[i * 3 + 1] = placeholder.position.y
       pos[i * 3 + 2] = placeholder.position.z
 
-      const distance = placeholder.getWorldPosition(worldPosition).distanceTo(camera.position)
+      const distance = interactive ? placeholder.getWorldPosition(worldPosition).distanceTo(camera.position) : universeDistance
       let visibility = (1 - MathUtils.smoothstep(distance, fade.near, fade.far)) * entry * sceneMotion.universeReveal
       const emphasized = emphasis.active && emphasis.websiteIds.has(website.id)
       const connected = relations.active && relations.websiteIds.has(website.id)

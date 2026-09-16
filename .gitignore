@@ -15,7 +15,7 @@ coverage/
 
 # screenshots from local checks — real assets live in public/ and are kept
 *.png
-!public/*.png
+!public/**/*.png
 
 # directory data dumps (Curlie, Tranco)
 content/
