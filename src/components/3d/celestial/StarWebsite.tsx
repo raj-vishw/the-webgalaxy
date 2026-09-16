@@ -3,7 +3,7 @@ import { useMemo, useRef, type RefObject } from 'react'
 import { Color, MathUtils, type Mesh, type MeshBasicMaterial, type Sprite } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import type { WebsiteDefinition } from '../../../types/galaxy'
-import { accentFor, glowFor, hashString, glyphFor } from '../../../utils/celestial'
+import { accentFor, glowFor, haloScaleFor, hashString, glyphFor } from '../../../utils/celestial'
 import type { CelestialFrameState } from './celestialFrame'
 import { GlyphSprite } from './GlyphSprite'
 import { ObjectGlow } from './ObjectGlow'
@@ -12,14 +12,17 @@ interface StarWebsiteProps {
   website: WebsiteDefinition
   frame: RefObject<CelestialFrameState>
   profile: QualityProfile
+  /** The site wears an icon emblem instead of its monogram. */
+  emblem?: boolean
 }
 
 /** A prominent website: small bright core, layered glow, gentle pulse. */
-export function StarWebsite({ website, frame, profile }: StarWebsiteProps) {
+export function StarWebsite({ website, frame, profile, emblem = false }: StarWebsiteProps) {
   const coreRef = useRef<Mesh>(null)
   const innerRef = useRef<Sprite>(null)
   const outerRef = useRef<Sprite>(null)
   const glow = glowFor(website)
+  const halo = haloScaleFor(website)
   const accent = accentFor(website)
   const glyph = glyphFor(website)
   const phase = useMemo(() => (hashString(website.id) % 1000) / 1000 * Math.PI * 2, [website.id])
@@ -53,9 +56,9 @@ export function StarWebsite({ website, frame, profile }: StarWebsiteProps) {
         <sphereGeometry args={[1, 20, 14]} />
         <meshBasicMaterial color={coreColor} transparent />
       </mesh>
-      <ObjectGlow ref={innerRef} color={accent} whiten={0.45} scale={4.5} />
-      <ObjectGlow ref={outerRef} color={accent} whiten={0.1} scale={11} />
-      {profile.tier !== 'low' && (
+      <ObjectGlow ref={innerRef} color={accent} whiten={0.45} scale={3.4 * halo} />
+      <ObjectGlow ref={outerRef} color={accent} whiten={0.1} scale={8.5 * halo} />
+      {profile.tier !== 'low' && !emblem && (
         <GlyphSprite glyph={glyph} frame={frame} scale={1.25} color="#0b0d18" opacity={0.6} />
       )}
     </group>

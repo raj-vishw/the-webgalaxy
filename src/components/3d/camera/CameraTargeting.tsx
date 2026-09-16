@@ -11,6 +11,7 @@ import {
   type CameraPose,
   type Obstacle,
 } from '../../../utils/camera'
+import { sceneMotion } from '../../../lib/sceneMotion'
 import { sizeFor } from '../../../utils/celestial'
 import { interiorScale } from '../../../utils/generatePositions'
 
@@ -38,6 +39,8 @@ export interface TargetingContext {
   previousCameraTarget: readonly [number, number, number] | null
   cameraPosition: Vector3
   overview: CameraPose
+  /** Viewport aspect ratio; portrait screens need more distance to frame a universe. */
+  aspect?: number
 }
 
 const focusPoint = new Vector3()
@@ -67,7 +70,10 @@ const interiorOf = (universeId: string) => interiorScale(websitesInUniverse(univ
 
 /** Where the camera should go for the current navigation state, or null to stay. */
 export function resolveDestination(ctx: TargetingContext): CameraDestination | null {
-  const { viewMode, previousMode, activeUniverseId, selectedWebsiteId, cameraPosition, overview } = ctx
+  const { viewMode, previousMode, activeUniverseId, selectedWebsiteId, cameraPosition, overview, aspect = 1.6 } = ctx
+  // Narrow viewports see less width: pull back so the whole interior still fits.
+  const framing = aspect < 1.2 ? Math.min(2, Math.pow(1.2 / aspect, 0.85)) : 1
+  sceneMotion.universeFraming = framing
 
   if (viewMode === 'galaxy') {
     if (previousMode === 'galaxy') return null
@@ -90,7 +96,7 @@ export function resolveDestination(ctx: TargetingContext): CameraDestination | n
     const universe = getCatalog().universes.find((u) => u.id === activeUniverseId)
     const object = celestialRegistry.get(activeUniverseId)
     if (!universe || !object) return null
-    const distance = universeViewDistance(universe, interiorOf(universe.id))
+    const distance = universeViewDistance(universe, interiorOf(universe.id)) * framing
     // A little more from above than the galaxy overview, so neighbourhoods read as a map.
     const direction = approachDirection(cameraPosition, object.getWorldPosition(focusPoint), 0.42).clone()
     return {

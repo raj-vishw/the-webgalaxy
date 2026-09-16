@@ -323,32 +323,65 @@ export const websitePointVertexShader = /* glsl */ `
   attribute float aAlpha;
   attribute float aBoost;
   attribute vec3 aColor;
+  attribute vec2 aUv; // atlas cell origin of the site's icon; x < 0 when it has none
   uniform float uPixelRatio;
   uniform float uTime;
   uniform float uScale; // 1 from afar; larger inside the entered universe, where points are the minor websites
+  uniform float uMedallion; // 0 glowing dot → 1 medallion (icon on a disc), eased when entering a universe
   varying vec3 vColor;
+  varying vec3 vAccent;
   varying float vAlpha;
+  varying vec2 vUv;
+  varying float vMedallion;
   void main() {
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     float size = aSize * uScale * (1.0 + 0.5 * aBoost) * uPixelRatio * (300.0 / max(-mv.z, 1.0));
-    gl_PointSize = clamp(size, 1.5, 26.0 * uPixelRatio);
+    gl_PointSize = clamp(size, 1.5, 34.0 * uPixelRatio);
     gl_Position = projectionMatrix * mv;
     float pulse = 1.0 + 0.08 * aBoost * sin(uTime * 3.0);
     vColor = mix(aColor, vec3(1.0), 0.35 + 0.35 * aBoost);
+    vAccent = mix(aColor, vec3(1.0), 0.5 * aBoost);
     vAlpha = aAlpha * pulse;
+    vUv = aUv;
+    // Only sites with an icon become medallions; the rest stay dots.
+    vMedallion = aUv.x < 0.0 ? 0.0 : uMedallion;
   }
 `
 
 export const websitePointFragmentShader = /* glsl */ `
+  uniform sampler2D uAtlas;
+  uniform vec2 uCell; // one atlas cell in UV units
   varying vec3 vColor;
+  varying vec3 vAccent;
   varying float vAlpha;
+  varying vec2 vUv;
+  varying float vMedallion;
   void main() {
-    float d = length(gl_PointCoord - 0.5) * 2.0;
+    vec2 p = gl_PointCoord - 0.5;
+    float d = length(p) * 2.0;
     if (d > 1.0) discard;
+    // Glowing dot (the far look).
     float core = exp(-d * d * 4.0);
     float halo = exp(-d * 2.2) * 0.35;
-    float a = (core + halo) * vAlpha;
-    gl_FragColor = vec4(vColor * a, a);
+    float dotA = (core + halo) * vAlpha;
+    vec4 dot = vec4(vColor * dotA, dotA);
+    if (vMedallion <= 0.001) {
+      gl_FragColor = dot;
+      #include <colorspace_fragment>
+      return;
+    }
+    // Medallion: dark disc, the icon in the middle, a thin accent ring, a soft outer glow.
+    // gl_PointCoord runs top-down; atlas v runs bottom-up.
+    vec2 uv = vUv + vec2(gl_PointCoord.x, 1.0 - gl_PointCoord.y) * uCell;
+    vec4 icon = texture2D(uAtlas, uv);
+    float disc = 1.0 - smoothstep(0.78, 0.84, d);
+    float ring = smoothstep(0.72, 0.78, d) * (1.0 - smoothstep(0.84, 0.9, d));
+    float outer = exp(-(d - 0.84) * 7.0) * step(0.84, d) * 0.28;
+    vec3 body = mix(vec3(0.03, 0.04, 0.09), icon.rgb, icon.a * disc);
+    float a = max(disc * 0.92, ring * 0.85);
+    vec3 rgb = body * disc + vAccent * ring * 0.85 + vAccent * outer;
+    vec4 medallion = vec4(rgb * vAlpha, (a + outer) * vAlpha);
+    gl_FragColor = mix(dot, medallion, vMedallion);
     #include <colorspace_fragment>
   }
 `

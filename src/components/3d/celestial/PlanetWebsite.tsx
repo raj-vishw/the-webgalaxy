@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, type RefObject } from 'react'
 import { AdditiveBlending, Color, type Group, type Mesh, type MeshStandardMaterial, type ShaderMaterial, type Sprite } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import type { WebsiteDefinition } from '../../../types/galaxy'
-import { accentFor, createSurfaceTexture, glowFor } from '../../../utils/celestial'
+import { accentFor, createSurfaceTexture, glowFor, haloScaleFor } from '../../../utils/celestial'
 import type { OrbitSpec } from '../../../utils/generateOrbits'
 import { sceneMotion } from '../../../lib/sceneMotion'
 import { atmosphereFragmentShader, atmosphereVertexShader } from '../shaders/pointShaders'
@@ -27,6 +27,7 @@ export function PlanetWebsite({ website, frame, orbit, profile, muted = false }:
   const atmosphereRef = useRef<Mesh>(null)
   const haloRef = useRef<Sprite>(null)
   const glow = glowFor(website)
+  const halo = haloScaleFor(website)
   const accent = accentFor(website)
 
   const texture = useMemo(() => createSurfaceTexture(website, muted), [website, muted])
@@ -97,7 +98,7 @@ export function PlanetWebsite({ website, frame, orbit, profile, muted = false }:
           />
         </mesh>
       )}
-      <ObjectGlow ref={haloRef} color={accent} whiten={0.25} scale={muted ? 2.6 : 3.2} />
+      <ObjectGlow ref={haloRef} color={accent} whiten={0.25} scale={(muted ? 2.6 : 3.2) * halo} />
     </group>
   )
 }

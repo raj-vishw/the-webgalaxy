@@ -3,7 +3,7 @@ import { useMemo, useRef, type RefObject } from 'react'
 import { Color, type Mesh, type MeshBasicMaterial, type Sprite } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import type { WebsiteDefinition } from '../../../types/galaxy'
-import { accentFor, glowFor, glyphFor } from '../../../utils/celestial'
+import { accentFor, glowFor, glyphFor, haloScaleFor } from '../../../utils/celestial'
 import type { CelestialFrameState } from './celestialFrame'
 import { GlyphSprite } from './GlyphSprite'
 import { ObjectGlow } from './ObjectGlow'
@@ -12,10 +12,12 @@ interface CometWebsiteProps {
   website: WebsiteDefinition
   frame: RefObject<CelestialFrameState>
   profile: QualityProfile
+  /** The site wears an icon emblem instead of its monogram. */
+  emblem?: boolean
 }
 
 /** The head of a comet: a bright nucleus and coma. The tail is drawn by `CometTrail`. */
-export function CometWebsite({ website, frame, profile }: CometWebsiteProps) {
+export function CometWebsite({ website, frame, profile, emblem = false }: CometWebsiteProps) {
   const coreRef = useRef<Mesh>(null)
   const comaRef = useRef<Sprite>(null)
   const glow = glowFor(website)
@@ -43,8 +45,8 @@ export function CometWebsite({ website, frame, profile }: CometWebsiteProps) {
         <sphereGeometry args={[1, 14, 10]} />
         <meshBasicMaterial color={coreColor} transparent />
       </mesh>
-      <ObjectGlow ref={comaRef} color={accent} whiten={0.35} scale={4} />
-      {profile.tier !== 'low' && (
+      <ObjectGlow ref={comaRef} color={accent} whiten={0.35} scale={3.2 * haloScaleFor(website)} />
+      {profile.tier !== 'low' && !emblem && (
         <GlyphSprite glyph={glyph} frame={frame} scale={1.8} color="#ffffff" opacity={0.5} additive />
       )}
     </group>

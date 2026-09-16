@@ -1,6 +1,7 @@
 import gsap from 'gsap'
 import { useEffect, useMemo } from 'react'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
+import { useLogoAtlas } from '../../../lib/logoAtlas'
 import { sceneMotion } from '../../../lib/sceneMotion'
 import { useWebsitesInUniverse } from '../../../store/catalogStore'
 import { useGalaxyStore } from '../../../store/galaxyStore'
@@ -43,6 +44,8 @@ const NAMED_IN_UNIVERSE: Record<QualityProfile['tier'], number> = { high: 8, med
 export function UniverseWebsites({ universe, profile, pixelRatio }: UniverseWebsitesProps) {
   const active = useGalaxyStore((s) => s.activeUniverseId === universe.id)
   const websites = useWebsitesInUniverse(universe.id)
+  // Icons are fetched only for the universe being explored (and stay cached).
+  const atlas = useLogoAtlas(universe.id, active)
   // Websites that must be full objects regardless of budget, as one stable key.
   const pinnedKey = useGalaxyStore((s) => {
     const ids = new Set<string>()
@@ -118,10 +121,11 @@ export function UniverseWebsites({ universe, profile, pixelRatio }: UniverseWebs
             pixelRatio={pixelRatio}
             interior={placement.interior}
             named={named.has(website.id)}
+            atlas={atlas}
           />
         )
       })}
-      <WebsitePoints universe={universe} websites={pointed} orbits={orbits} pixelRatio={pixelRatio} interior={placement.interior} interactive={active} />
+      <WebsitePoints universe={universe} websites={pointed} orbits={orbits} pixelRatio={pixelRatio} interior={placement.interior} interactive={active} atlas={atlas} />
       {active && <NeighbourhoodCaptions universe={universe} neighbourhoods={placement.neighbourhoods} />}
     </group>
   )

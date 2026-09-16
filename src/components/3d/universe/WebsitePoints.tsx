@@ -1,8 +1,9 @@
 import { useCursor } from '@react-three/drei'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Group, MathUtils, Object3D, ShaderMaterial, Sphere, Vector3 } from 'three'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Group, MathUtils, NormalBlending, Object3D, ShaderMaterial, Sphere, Texture, Vector2, Vector3 } from 'three'
 import { celestialRegistry } from '../../../lib/celestialRegistry'
+import type { LogoAtlas } from '../../../lib/logoAtlas'
 import { sceneMotion } from '../../../lib/sceneMotion'
 import { useGalaxyStore } from '../../../store/galaxyStore'
 import type { UniverseDefinition, WebsiteDefinition } from '../../../types/galaxy'
@@ -19,6 +20,8 @@ interface WebsitePointsProps {
   interior?: number
   /** Inside the entered universe points answer the pointer: hover names them, click focuses. */
   interactive?: boolean
+  /** Icon atlas of the universe, when loaded: points become medallions inside it. */
+  atlas?: LogoAtlas | null
 }
 
 const SIZE_BY_TYPE = { star: 1.9, planet: 1.25, moon: 0.85, comet: 1.0 } as const
@@ -34,7 +37,7 @@ const anchorPosition = new Vector3()
  * connection lines can target them. The moment one is selected, hovered or
  * connected, `UniverseWebsites` promotes it to a full object.
  */
-export function WebsitePoints({ universe, websites, orbits, pixelRatio, interior = 1, interactive = false }: WebsitePointsProps) {
+export function WebsitePoints({ universe, websites, orbits, pixelRatio, interior = 1, interactive = false, atlas = null }: WebsitePointsProps) {
   const groupRef = useRef<Group>(null)
   const positionRef = useRef<BufferAttribute>(null)
   const alphaRef = useRef<BufferAttribute>(null)
@@ -85,6 +88,7 @@ export function WebsitePoints({ universe, websites, orbits, pixelRatio, interior
     const positions = new Float32Array(n * 3)
     const sizes = new Float32Array(n)
     const colors = new Float32Array(n * 3)
+    const uvs = new Float32Array(n * 2)
     const color = new Color()
     entries.forEach(({ website }, i) => {
       sizes[i] = SIZE_BY_TYPE[website.objectType] * (0.7 + 0.6 * glowFor(website)) * Math.max(0.5, sizeFor(website))
@@ -92,9 +96,12 @@ export function WebsitePoints({ universe, websites, orbits, pixelRatio, interior
       colors[i * 3] = color.r
       colors[i * 3 + 1] = color.g
       colors[i * 3 + 2] = color.b
+      const uv = atlas?.uvOf(website.id) ?? null
+      uvs[i * 2] = uv ? uv.u : -1
+      uvs[i * 2 + 1] = uv ? uv.v : -1
     })
-    return { positions, sizes, colors, alphas: new Float32Array(n), boosts: new Float32Array(n) }
-  }, [entries])
+    return { positions, sizes, colors, uvs, alphas: new Float32Array(n), boosts: new Float32Array(n) }
+  }, [entries, atlas])
 
   // Placeholders: real objects in the scene graph (no geometry) so world
   // positions resolve for camera targeting and connection lines.
@@ -110,9 +117,19 @@ export function WebsitePoints({ universe, websites, orbits, pixelRatio, interior
     }
   }, [entries, placeholders])
 
-  const uniforms = useMemo(() => ({ uPixelRatio: { value: pixelRatio }, uTime: { value: 0 }, uScale: { value: 1 } }), [pixelRatio])
-  /** Inside the entered universe the points stand for real websites: bigger and brighter. */
-  const INSIDE_SCALE = 4.2
+  const uniforms = useMemo(
+    () => ({
+      uPixelRatio: { value: pixelRatio },
+      uTime: { value: 0 },
+      uScale: { value: 1 },
+      uMedallion: { value: 0 },
+      uAtlas: { value: null as Texture | null },
+      uCell: { value: new Vector2(0, 0) },
+    }),
+    [pixelRatio],
+  )
+  /** Inside the entered universe the points stand for real websites: bigger, brighter, and medallions when icons exist. */
+  const INSIDE_SCALE = 5.2
 
   useFrame(({ camera }, delta) => {
     const position = positionRef.current
@@ -122,8 +139,20 @@ export function WebsitePoints({ universe, websites, orbits, pixelRatio, interior
     if (!position || !alpha || !boost || !material || !groupRef.current) return
     timeRef.current += delta * sceneMotion.motionScale
     material.uniforms.uTime.value += delta
-    const scaleTarget = interactive ? INSIDE_SCALE : 1
+    const scaleTarget = interactive ? INSIDE_SCALE * sceneMotion.universeFraming : 1
     material.uniforms.uScale.value += (scaleTarget - material.uniforms.uScale.value) * (1 - Math.exp(-delta * 3))
+    if (material.uniforms.uAtlas.value !== (atlas?.texture ?? null)) {
+      material.uniforms.uAtlas.value = atlas?.texture ?? null
+      material.uniforms.uCell.value.set(atlas ? 1 / atlas.columns : 0, atlas ? 1 / atlas.rows : 0)
+    }
+    const medallionTarget = interactive && atlas ? 1 : 0
+    const medallion = (material.uniforms.uMedallion.value += (medallionTarget - material.uniforms.uMedallion.value) * (1 - Math.exp(-delta * 3)))
+    // Dots add light; medallions have a dark disc and must be composited normally.
+    const blending = medallion > 0.5 ? NormalBlending : AdditiveBlending
+    if (material.blending !== blending) {
+      material.blending = blending
+      material.needsUpdate = true
+    }
     const { emphasis, filter, relations } = sceneMotion
     const entry = sceneMotion.universeEntry[universe.id] ?? 1
     const pos = position.array as Float32Array
@@ -178,6 +207,7 @@ export function WebsitePoints({ universe, websites, orbits, pixelRatio, interior
           <bufferAttribute ref={positionRef} attach="attributes-position" args={[buffers.positions, 3]} />
           <bufferAttribute attach="attributes-aSize" args={[buffers.sizes, 1]} />
           <bufferAttribute attach="attributes-aColor" args={[buffers.colors, 3]} />
+          <bufferAttribute attach="attributes-aUv" args={[buffers.uvs, 2]} />
           <bufferAttribute ref={alphaRef} attach="attributes-aAlpha" args={[buffers.alphas, 1]} />
           <bufferAttribute ref={boostRef} attach="attributes-aBoost" args={[buffers.boosts, 1]} />
         </bufferGeometry>

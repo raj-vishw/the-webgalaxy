@@ -37,6 +37,7 @@ function bezier(out: Vector3, p0: Vector3, p1: Vector3, p2: Vector3, t: number) 
  */
 export function CameraTransition({ controls, overview, reducedMotion }: CameraTransitionProps) {
   const camera = useThree((s) => s.camera)
+  const getThree = useThree((s) => s.get)
   const canvas = useThree((s) => s.gl.domElement)
   const introPhase = useGalaxyStore((s) => s.introPhase)
   const viewMode = useGalaxyStore((s) => s.viewMode)
@@ -83,6 +84,7 @@ export function CameraTransition({ controls, overview, reducedMotion }: CameraTr
         previousCameraTarget: store.previousCameraTarget,
         cameraPosition: camera.position,
         overview,
+        aspect: getThree().viewport.aspect,
       })
       if (!destination) {
         if (++attempts < 30) raf = requestAnimationFrame(start)
@@ -165,7 +167,7 @@ export function CameraTransition({ controls, overview, reducedMotion }: CameraTr
       cancelAnimationFrame(raf)
       cleanupFlight?.()
     }
-  }, [camera, canvas, controls, viewMode, activeUniverseId, selectedWebsiteId, introPhase, overview, reducedMotion])
+  }, [camera, canvas, controls, getThree, viewMode, activeUniverseId, selectedWebsiteId, introPhase, overview, reducedMotion])
 
   return null
 }

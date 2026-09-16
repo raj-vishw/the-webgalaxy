@@ -14,6 +14,7 @@ import { RecommendationPanel } from '../discovery/RecommendationPanel'
 import { SimilarWebsites } from '../discovery/SimilarWebsites'
 import { RelatedWebsites } from '../relationships/RelatedWebsites'
 import { focusRing } from './panel'
+import { LogoMark } from './LogoMark'
 
 const TYPE_LABEL: Record<CelestialObjectType, string> = {
   star: 'Star',
@@ -128,11 +129,14 @@ export function WebsiteInfoPanel() {
           >
             {website?.logo ? (
               <img src={website.logo} alt="" className="h-7 w-7 object-contain" />
-            ) : (
-              <span className="font-sans text-[13px] font-semibold tracking-[0.04em] text-white/90">
-                {website ? glyphFor(website) : ''}
-              </span>
-            )}
+            ) : website ? (
+              <LogoMark
+                websiteId={website.id}
+                universeId={website.universeId}
+                size={28}
+                fallback={<span className="font-sans text-[13px] font-semibold tracking-[0.04em] text-white/90">{glyphFor(website)}</span>}
+              />
+            ) : null}
           </div>
           <div className="min-w-0">
             <h2

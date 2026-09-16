@@ -1,12 +1,13 @@
 import { CanvasTexture, Color, SRGBColorSpace, type Texture } from 'three'
+import { sceneMotion } from '../lib/sceneMotion'
 import type { CelestialObjectType, UniverseDefinition, WebsiteDefinition } from '../types/galaxy'
 
-/** Base radius per object type in world units, before importance scaling. */
+/** Type multipliers on the uniform size — kept at 1 so every body reads the same size. */
 const BASE_SIZE: Record<CelestialObjectType, number> = {
-  star: 0.6,
-  planet: 1.25,
-  moon: 0.55,
-  comet: 0.3,
+  star: 1,
+  planet: 1,
+  moon: 1,
+  comet: 1,
 }
 
 const DEFAULT_IMPORTANCE = 50
@@ -42,14 +43,27 @@ export function urlFor(website: WebsiteDefinition): string | null {
   }
 }
 
-/** Importance-driven size. Deliberately compressed so small sites stay findable. */
+/** Every body is the same size; the type decides its look and the halo its prominence. */
+const UNIFORM_SIZE = 1.05
+
+/**
+ * Body radius in world units. Uniform on purpose: with dozens of websites in
+ * a universe, identity comes from each body's face (icon, monogram, surface)
+ * and prominence from its halo and name — never from being bigger.
+ * `website.size` remains as a manual nudge for special cases.
+ */
 export function sizeFor(website: WebsiteDefinition): number {
-  return BASE_SIZE[website.objectType] * (0.72 + 0.58 * importanceFor(website)) * (website.size ?? 1)
+  return UNIFORM_SIZE * BASE_SIZE[website.objectType] * (website.size ?? 1)
 }
 
-/** Glow strength (0–1-ish) driven by importance. */
+/** Glow strength (0–1-ish) driven by importance — where prominence now lives. */
 export function glowFor(website: WebsiteDefinition): number {
-  return 0.55 + 0.45 * importanceFor(website)
+  return 0.35 + 0.65 * importanceFor(website)
+}
+
+/** Halo reach (× body radius) driven by importance: flagships glow wide, minor sites tight. */
+export function haloScaleFor(website: WebsiteDefinition): number {
+  return 0.75 + 0.6 * importanceFor(website)
 }
 
 /**
@@ -59,7 +73,7 @@ export function glowFor(website: WebsiteDefinition): number {
  */
 export function fadeDistancesFor(website: WebsiteDefinition, universe: UniverseDefinition, interior = 1) {
   const importance = importanceFor(website)
-  const reach = universe.scale * interior
+  const reach = universe.scale * interior * sceneMotion.universeFraming
   const far = reach * (4.5 + 3.5 * importance)
   return { near: far - reach * 1.5, far }
 }

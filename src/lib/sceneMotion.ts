@@ -43,4 +43,6 @@ export const sceneMotion = {
    * universe so its websites appear in stages. Absent = fully revealed.
    */
   universeEntry: {} as Record<string, number>,
+  /** Extra distance the camera keeps from an entered universe on narrow viewports (1 = none); detail levels follow it. */
+  universeFraming: 1,
 }

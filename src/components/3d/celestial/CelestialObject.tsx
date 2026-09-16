@@ -5,6 +5,7 @@ import { Group, MathUtils, PerspectiveCamera, Vector3 } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import { celestialRegistry } from '../../../lib/celestialRegistry'
 import { labelDeclutter } from '../../../lib/labelDeclutter'
+import type { LogoAtlas } from '../../../lib/logoAtlas'
 import { sceneMotion } from '../../../lib/sceneMotion'
 import { isEmerging, isTrending } from '../../../services/recommendationService'
 import { useGalaxyStore } from '../../../store/galaxyStore'
@@ -16,6 +17,7 @@ import { WebsiteInteraction } from '../interaction/WebsiteInteraction'
 import { createCelestialFrameState } from './celestialFrame'
 import { CometTrail } from './CometTrail'
 import { CometWebsite } from './CometWebsite'
+import { Emblem } from './Emblem'
 import { MoonWebsite } from './MoonWebsite'
 import { PlanetWebsite } from './PlanetWebsite'
 import { SelectionRing } from './SelectionRing'
@@ -32,6 +34,8 @@ interface CelestialObjectProps {
   interior?: number
   /** Carries a permanent name inside the entered universe (top few by prominence). */
   named?: boolean
+  /** Icon atlas of the universe, when loaded; the site wears its icon as an emblem. */
+  atlas?: LogoAtlas | null
 }
 
 const HIT_RADIUS: Record<WebsiteDefinition['objectType'], number> = { star: 3.2, planet: 1.6, moon: 2.2, comet: 3 }
@@ -49,7 +53,8 @@ const screenPosition = new Vector3()
  * and level of detail, hover / focus easing, and its label; the object type
  * decides which body is drawn.
  */
-export function CelestialObject({ website, universe, orbit, profile, pixelRatio, interior = 1, named = false }: CelestialObjectProps) {
+export function CelestialObject({ website, universe, orbit, profile, pixelRatio, interior = 1, named = false, atlas = null }: CelestialObjectProps) {
+  const emblem = !!atlas && atlas.slotOf(website.id) >= 0
   const rootRef = useRef<Group>(null)
   const bodyRef = useRef<Group>(null)
   const labelRef = useRef<HTMLDivElement>(null)
@@ -113,7 +118,7 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio,
     f.visibility = (1 - MathUtils.smoothstep(distance, near, far)) * entryReveal
     // Hysteresis so objects don't flicker between detail levels at the boundary.
     // A grown interior is viewed from further away; the body must still be a body there.
-    const lodDistance = profile.lodDistance * interior * (f.lod === 'point' ? 1 : 1.15)
+    const lodDistance = profile.lodDistance * interior * sceneMotion.universeFraming * (f.lod === 'point' ? 1 : 1.15)
     const detailDistance = size * DETAIL_FACTOR * (f.lod === 'detail' ? 1.15 : 1)
     f.lod = distance < detailDistance ? 'detail' : distance < lodDistance ? 'full' : 'point'
 
@@ -165,14 +170,14 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio,
     <>
       <group ref={rootRef}>
         <group ref={bodyRef} scale={size}>
-          {website.objectType === 'star' && <StarWebsite website={website} frame={frameRef} profile={profile} />}
+          {website.objectType === 'star' && <StarWebsite website={website} frame={frameRef} profile={profile} emblem={emblem} />}
           {website.objectType === 'planet' && (
             <PlanetWebsite website={website} frame={frameRef} orbit={orbit} profile={profile} />
           )}
           {website.objectType === 'moon' && (
             <MoonWebsite website={website} frame={frameRef} orbit={orbit} profile={profile} />
           )}
-          {website.objectType === 'comet' && <CometWebsite website={website} frame={frameRef} profile={profile} />}
+          {website.objectType === 'comet' && <CometWebsite website={website} frame={frameRef} profile={profile} emblem={emblem} />}
           <WebsiteInteraction website={website} radius={HIT_RADIUS[website.objectType]} frame={frameRef} />
           <SelectionRing
             frame={frameRef}
@@ -184,6 +189,7 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio,
             <TrendMarker kind={trend} websiteId={website.id} frame={frameRef} color={accentFor(website)} reducedMotion={profile.reducedMotion} />
           )}
         </group>
+        {emblem && atlas && <Emblem website={website} atlas={atlas} frame={frameRef} size={size} />}
         {showLabel && (
           <Html center zIndexRange={[6, 0]} style={{ pointerEvents: 'none' }}>
             <div ref={labelRef} style={{ opacity: 0 }}>
