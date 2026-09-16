@@ -65,6 +65,8 @@ export function generateOrbits(
   universe: UniverseDefinition,
   websites: WebsiteDefinition[],
   positions: Map<string, Vec3>,
+  /** How much the interior grew for its population (see `interiorScale`). */
+  interior = 1,
 ): Map<string, OrbitSpec> {
   const orbits = new Map<string, OrbitSpec>()
   const energy = universe.layout.energy
@@ -93,7 +95,7 @@ export function generateOrbits(
     if (website.objectType === 'comet') {
       orbits.set(website.id, {
         kind: 'comet',
-        a: universe.scale * rnd.range(0.8, 1.05),
+        a: universe.scale * interior * rnd.range(0.8, 1.05),
         eccentricity: rnd.range(0.4, 0.6),
         period: rnd.range(150, 230) / energy,
         ...basisFor(rnd, 1.3),

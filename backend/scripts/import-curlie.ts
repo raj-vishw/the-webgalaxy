@@ -39,6 +39,10 @@ const OUTPUT = resolve(ROOT, 'src/data/directory.ts')
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=') as [string, string]))
 const PER_UNIVERSE = Number(args['per-universe'] ?? 50)
 const MAX_RANK = Number(args['max-rank'] ?? 150_000)
+/** Neighbourhoods per universe: enough to give it structure, few enough to read at a glance. */
+const TOPICS_PER_UNIVERSE = Number(args['topics'] ?? 7)
+/** Comets are accents, not a population. */
+const COMETS_PER_UNIVERSE = 3
 /** Only these Curlie files hold English topic categories. */
 const FILES = ['Top', 'Arts', 'Business', 'KT', 'Society']
 
@@ -117,6 +121,7 @@ interface Candidate {
   description: string
   path: string
   rank: number
+  topic?: string
 }
 
 function log(message: string, extra: Record<string, unknown> = {}) {
@@ -128,9 +133,25 @@ async function* rows(file: string, separator = '\t'): AsyncGenerator<string[]> {
   for await (const line of reader) if (line) yield line.split(separator)
 }
 
-function universeFor(path: string): string | null {
-  for (const [prefix, universe] of UNIVERSE_RULES) if (path.startsWith(prefix)) return universe
+function universeFor(path: string): { universe: string; prefix: string } | null {
+  for (const [prefix, universe] of UNIVERSE_RULES) if (path.startsWith(prefix)) return { universe, prefix }
   return null
+}
+
+/**
+ * The neighbourhood a listing belongs to inside its universe: the category
+ * segment right after the part of the path that chose the universe
+ * ("Society/Religion_and_Spirituality/…" → "Religion & Spirituality",
+ * "Home/Cooking/Baking/…" → "Baking"). Listings sitting directly in the
+ * choosing category have no topic and gather at the universe's core.
+ */
+function topicFor(path: string, prefix: string): string | undefined {
+  const rest = path.slice(prefix.length).replace(/^\//, '')
+  const segment = rest.split('/')[0]
+  if (!segment) return undefined
+  let topic = segment.replace(/_/g, ' ').replace(/ and /g, ' & ')
+  if (topic.length > 24) topic = topic.split(/ & |, /)[0]
+  return topic.length > 1 ? topic.slice(0, 24) : undefined
 }
 
 function hostOf(url: string): { host: string; root: boolean } | null {
@@ -193,16 +214,21 @@ function slugFor(host: string, taken: Set<string>): string {
   return slug
 }
 
-/** Accent colour: the universe's primary hue, varied a little per website. */
-function accentFor(universeId: string, slug: string): string {
+/**
+ * Accent colour: each topic is a colour family (a hue of its own, so a
+ * neighbourhood reads as one), varied a little per website; websites without
+ * a topic borrow the universe's hue.
+ */
+function accentFor(universeId: string, slug: string, topic: string | undefined): string {
   const palette = universes.find((u) => u.id === universeId)?.palette.primary ?? '#9db4ff'
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(palette.slice(i, i + 2), 16) / 255)
   const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min
   let h = 0
   if (d) h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
-  h = ((h * 60 + 360) % 360 + ((hashString(slug) % 61) - 30) + 360) % 360
-  const s = 0.5 + (hashString(`${slug}s`) % 25) / 100
-  const l = 0.62 + (hashString(`${slug}l`) % 12) / 100
+  h = topic ? hashString(`${universeId}/${topic}`) % 360 : (h * 60 + 360) % 360
+  h = (h + ((hashString(slug) % 25) - 12) + 360) % 360
+  const s = 0.58 + (hashString(`${slug}s`) % 22) / 100
+  const l = 0.6 + (hashString(`${slug}l`) % 12) / 100
   const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = l - c / 2
   const [r1, g1, b1] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x]
   return `#${[r1, g1, b1].map((v) => Math.round((v + m) * 255).toString(16).padStart(2, '0')).join('')}`
@@ -230,15 +256,16 @@ for (const f of FILES) {
     scanned++
     const path = categories.get(categoryId)
     if (!path || !url || !title) continue
-    const universe = universeFor(path)
-    if (!universe) continue
+    const match = universeFor(path)
+    if (!match) continue
+    const { universe, prefix } = match
     const target = hostOf(url)
     if (!target || !target.root || PLATFORM_HOSTS.test(target.host) || curatedHosts.has(target.host)) continue
     const r = rank.get(target.host)
     if (!r) continue
     const existing = byHost.get(target.host)
     if (!existing || path.split('/').length > existing.path.split('/').length) {
-      byHost.set(target.host, { host: target.host, url: url.trim(), title, description, path, rank: r, universe })
+      byHost.set(target.host, { host: target.host, url: url.trim(), title, description, path, rank: r, universe, topic: topicFor(path, prefix) })
     }
   }
 }
@@ -259,14 +286,19 @@ for (const universe of universes) {
     log('no candidates for universe', { universe: universe.id })
     continue
   }
+  // Group by neighbourhood; keep the deepest few so each has real members,
+  // then take the best-ranked sites round-robin across them.
   const buckets = new Map<string, Candidate[]>()
   for (const c of pool.values()) {
-    const key = c.path.split('/').slice(0, 2).join('/')
+    const key = c.topic ?? ''
     const list = buckets.get(key) ?? []
     list.push(c)
     buckets.set(key, list)
   }
-  const ordered = [...buckets.values()].map((list) => list.sort((a, b) => a.rank - b.rank)).sort((a, b) => a[0].rank - b[0].rank)
+  const bySize = [...buckets.values()]
+    .map((list) => list.sort((a, b) => a.rank - b.rank))
+    .sort((a, b) => b.length - a.length || a[0].rank - b[0].rank)
+  const ordered = bySize.slice(0, TOPICS_PER_UNIVERSE).sort((a, b) => a[0].rank - b[0].rank)
   const picks: Candidate[] = []
   while (picks.length < PER_UNIVERSE && ordered.some((l) => l.length)) {
     for (const list of ordered) {
@@ -275,7 +307,13 @@ for (const universe of universes) {
       if (picks.length >= PER_UNIVERSE) break
     }
   }
+  // A small universe (few topics deep enough) tops up from the rest, by rank.
+  for (const c of bySize.slice(TOPICS_PER_UNIVERSE).flat().sort((a, b) => a.rank - b.rank)) {
+    if (picks.length >= PER_UNIVERSE) break
+    picks.push(c)
+  }
   picks.sort((a, b) => a.rank - b.rank)
+  let comets = 0
   for (const [i, c] of picks.entries()) {
     const slug = slugFor(c.host, taken)
     // Prominence blends the site's global popularity with its standing inside
@@ -284,17 +322,24 @@ for (const universe of universes) {
     const importance = Math.round(0.5 * importanceFrom(c.rank) + 0.5 * (92 - 50 * standing))
     let objectType: CelestialObjectType
     if (i < 2 && importance >= 74) objectType = 'star'
-    else if (standing < 0.4) objectType = 'planet'
-    else objectType = i % 4 === 3 ? 'comet' : 'moon'
+    else if (standing < 0.22) objectType = 'planet'
+    else if (comets < COMETS_PER_UNIVERSE && i % 5 === 4) {
+      objectType = 'comet'
+      comets++
+    } else objectType = 'moon'
+    const name = nameFrom(c.title)
     selected.push({
       id: slug,
-      name: nameFrom(c.title),
+      name,
       url: c.url,
       universeId: universe.id,
       objectType,
       importance,
       description: descriptionFrom(c.description),
-      accent: accentFor(universe.id, slug),
+      accent: accentFor(universe.id, slug, c.topic),
+      // One clear initial instead of a cropped pair of letters.
+      glyph: name.replace(/^(the|a|an) /i, '').charAt(0).toUpperCase(),
+      topic: c.topic,
       tags: tagsFrom(c.path),
       path: c.path,
       rank: c.rank,
@@ -303,17 +348,18 @@ for (const universe of universes) {
   log(`selected for ${universe.id}`, { picked: picks.length, pool: pool.size, topics: buckets.size })
 }
 
-// ─── Moons orbit a planet or star of the same universe (visual only) ─────────
+// ─── Some moons orbit a planet or star of their own neighbourhood (visual only) ─
+// Only every other moon gets an anchor, and never more than two per body, so
+// the rest float free inside the neighbourhood instead of crowding one orbit.
 for (const universe of universes) {
-  const anchors = [...curated, ...selected].filter((w) => w.universeId === universe.id && (w.objectType === 'planet' || w.objectType === 'star'))
-  let n = 0
+  const load = new Map<string, number>()
   for (const w of selected) {
     if (w.universeId !== universe.id || w.objectType !== 'moon') continue
-    if (!anchors.length) {
-      w.objectType = 'comet'
-      continue
-    }
-    w.orbitAnchorId = anchors[n++ % anchors.length].id
+    const anchors = selected.filter((a) => a.universeId === universe.id && a.topic === w.topic && (a.objectType === 'planet' || a.objectType === 'star') && (load.get(a.id) ?? 0) < 2)
+    const anchor = anchors[hashString(w.id) % Math.max(1, anchors.length)]
+    if (!anchor || hashString(`${w.id}o`) % 2) continue
+    w.orbitAnchorId = anchor.id
+    load.set(anchor.id, (load.get(anchor.id) ?? 0) + 1)
   }
 }
 
@@ -349,7 +395,9 @@ const source = `import type { WebsiteDefinition, WebsiteRelationship } from '../
  * titles and descriptions are Curlie's editorial content) ranked by the
  * Tranco list (tranco-list.eu). ${selected.length} websites across
  * ${new Set(selected.map((w) => w.universeId)).size} universes; each universe holds at most ${PER_UNIVERSE}.
- * Relationships connect neighbours from the same Curlie category as equals.
+ * Each website carries its Curlie sub-topic as \`topic\`, which the scene uses
+ * to place neighbourhoods. Relationships connect neighbours from the same
+ * Curlie category as equals.
  */
 export const directoryWebsites: WebsiteDefinition[] = [
 ${lines.join('\n')}

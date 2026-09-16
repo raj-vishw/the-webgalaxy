@@ -63,8 +63,9 @@ export function approachDirection(from: Vector3, focus: Vector3, minElevation: n
   return out.normalize()
 }
 
-export function universeViewDistance(universe: UniverseDefinition): number {
-  return universe.scale * UNIVERSE_VIEW_FACTOR
+/** `interior` is how much the universe grew for its population (see `interiorScale`). */
+export function universeViewDistance(universe: UniverseDefinition, interior = 1): number {
+  return universe.scale * interior * UNIVERSE_VIEW_FACTOR
 }
 
 export function websiteViewDistance(website: WebsiteDefinition): number {

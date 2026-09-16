@@ -7,6 +7,8 @@ import { celestialRegistry } from '../../../lib/celestialRegistry'
 import { labelDeclutter } from '../../../lib/labelDeclutter'
 import { buildUniverseGeometry } from '../../../lib/universeGeometry'
 import { sceneMotion } from '../../../lib/sceneMotion'
+import { interiorScale } from '../../../utils/generatePositions'
+import { useWebsitesInUniverse } from '../../../store/catalogStore'
 import { useGalaxyStore } from '../../../store/galaxyStore'
 import type { UniverseDefinition } from '../../../types/galaxy'
 import { UniverseLabel } from '../../ui/UniverseLabel'
@@ -30,7 +32,7 @@ const REVEAL_WINDOW = 0.45
 /** How much the structure fades while one of its websites is focused. */
 const DIM_AMOUNT = 0.55
 /** How much the structure fades once the camera is inside it, so websites read clearly. */
-const PROXIMITY_DIM = 0.5
+const PROXIMITY_DIM = 0.74
 /** How much non-active universes recede while another is entered. */
 const DISTANT_DIM = 0.3
 /** Gap between the structure's projected edge and its label, in CSS pixels. */
@@ -55,6 +57,8 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
   const dimmed = useGalaxyStore((s) => s.activeUniverseId === definition.id && s.selectedWebsiteId !== null)
   // Other universes recede a little while one is entered — still present, just quieter.
   const distant = useGalaxyStore((s) => s.viewMode !== 'galaxy' && s.activeUniverseId !== definition.id)
+  // The interior grows with the population; proximity effects follow it.
+  const reach = definition.scale * interiorScale(useWebsitesInUniverse(definition.id).length)
 
   const geometry = useMemo(
     () => buildUniverseGeometry(definition, profile.universeDetail),
@@ -77,7 +81,7 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
 
     frame.reveal = MathUtils.smoothstep(sceneMotion.universeReveal, revealOffset, revealOffset + REVEAL_WINDOW)
     const distance = root.getWorldPosition(worldPosition).distanceTo(camera.position)
-    const proximity = 1 - MathUtils.smoothstep(distance, definition.scale * 2, definition.scale * 4.5)
+    const proximity = 1 - MathUtils.smoothstep(distance, reach * 2.5, reach * 5)
     const k = 1 - Math.exp(-delta * 5)
     // A freshly selected universe brightens and swells slightly until the
     // camera is inside it, where the proximity dim takes over.
@@ -102,7 +106,7 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
       const fov = (camera as PerspectiveCamera).fov * MathUtils.DEG2RAD
       const pxPerUnit = size.height / 2 / (distance * Math.tan(fov / 2))
       const offset = scale * pxPerUnit + LABEL_GAP_PX
-      const proximityFade = MathUtils.smoothstep(distance, definition.scale * 3.2, definition.scale * 5)
+      const proximityFade = MathUtils.smoothstep(distance, reach * 3.2, reach * 5)
       // Where the label lands on screen, for the shared declutter pass.
       screenPosition.copy(worldPosition).project(camera)
       const behind = screenPosition.z > 1

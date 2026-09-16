@@ -46,6 +46,7 @@ export const createWebsiteSchema = z.object({
   isActive: z.boolean().optional(),
   accent: hexColorSchema.nullable().optional(),
   glyph: z.string().trim().min(1).max(4).nullable().optional(),
+  topic: z.string().trim().min(1).max(60).nullable().optional(),
   orbitAnchorId: z.string().min(1).max(80).nullable().optional(),
   tags: z.array(tagNameSchema).max(8).default([]),
 })

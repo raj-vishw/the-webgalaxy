@@ -30,6 +30,7 @@ const light: ApiWebsiteLight = {
   isEmerging: false,
   accent: '#d97757',
   glyph: 'Cl',
+  topic: null,
   logoUrl: null,
   orbitAnchorId: null,
   tags: ['assistant', 'llm'],

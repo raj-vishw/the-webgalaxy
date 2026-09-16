@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { Group, MathUtils, PerspectiveCamera, Vector3 } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import { celestialRegistry } from '../../../lib/celestialRegistry'
+import { labelDeclutter } from '../../../lib/labelDeclutter'
 import { sceneMotion } from '../../../lib/sceneMotion'
 import { isEmerging, isTrending } from '../../../services/recommendationService'
 import { useGalaxyStore } from '../../../store/galaxyStore'
@@ -27,6 +28,10 @@ interface CelestialObjectProps {
   orbit: OrbitSpec
   profile: QualityProfile
   pixelRatio: number
+  /** Interior growth of the universe for its population (see `interiorScale`). */
+  interior?: number
+  /** Carries a permanent name inside the entered universe (top few by prominence). */
+  named?: boolean
 }
 
 const HIT_RADIUS: Record<WebsiteDefinition['objectType'], number> = { star: 3.2, planet: 1.6, moon: 2.2, comet: 3 }
@@ -37,13 +42,14 @@ const DETAIL_FACTOR = 22
 
 const worldPosition = new Vector3()
 const anchorPosition = new Vector3()
+const screenPosition = new Vector3()
 
 /**
  * One website inside a universe. Drives its orbit, distance-based visibility
  * and level of detail, hover / focus easing, and its label; the object type
  * decides which body is drawn.
  */
-export function CelestialObject({ website, universe, orbit, profile, pixelRatio }: CelestialObjectProps) {
+export function CelestialObject({ website, universe, orbit, profile, pixelRatio, interior = 1, named = false }: CelestialObjectProps) {
   const rootRef = useRef<Group>(null)
   const bodyRef = useRef<Group>(null)
   const labelRef = useRef<HTMLDivElement>(null)
@@ -61,7 +67,7 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
   const trend = isTrending(website.id) ? 'trending' : isEmerging(website.id) ? 'emerging' : null
 
   const size = sizeFor(website)
-  const { near, far } = fadeDistancesFor(website, universe)
+  const { near, far } = fadeDistancesFor(website, universe, interior)
   const [revealStart, revealEnd] = ENTRY_REVEAL_WINDOW[website.objectType]
 
   useEffect(() => {
@@ -69,6 +75,8 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
     if (!root) return
     return celestialRegistry.register(website.id, root)
   }, [website.id])
+
+  useEffect(() => () => labelDeclutter.remove(`w:${website.id}`), [website.id])
 
   useFrame(({ camera, size: viewport }, delta) => {
     const root = rootRef.current
@@ -104,7 +112,8 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
     const entryReveal = selected || emphasized || connected ? 1 : MathUtils.smoothstep(entry, revealStart, revealEnd)
     f.visibility = (1 - MathUtils.smoothstep(distance, near, far)) * entryReveal
     // Hysteresis so objects don't flicker between detail levels at the boundary.
-    const lodDistance = profile.lodDistance * (f.lod === 'point' ? 1 : 1.15)
+    // A grown interior is viewed from further away; the body must still be a body there.
+    const lodDistance = profile.lodDistance * interior * (f.lod === 'point' ? 1 : 1.15)
     const detailDistance = size * DETAIL_FACTOR * (f.lod === 'detail' ? 1.15 : 1)
     f.lod = distance < detailDistance ? 'detail' : distance < lodDistance ? 'full' : 'point'
 
@@ -128,12 +137,29 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
       const fov = (camera as PerspectiveCamera).fov * MathUtils.DEG2RAD
       const pxPerUnit = viewport.height / 2 / (distance * Math.tan(fov / 2))
       const extent = website.objectType === 'star' ? size * 2.2 : size * 1.25
-      label.style.transform = `translateY(${(extent * pxPerUnit + LABEL_GAP_PX).toFixed(1)}px)`
-      label.style.opacity = String(f.visibility * (hovered || selected ? 1 : 0.7))
+      const offset = extent * pxPerUnit + LABEL_GAP_PX
+      // Permanent names share the declutter pass with universe labels and
+      // topic captions; the focused and hovered names always win.
+      screenPosition.copy(worldPosition).project(camera)
+      if (f.labelBox[0] === 0 || f.frames++ % 90 === 0) f.labelBox = [label.offsetWidth, label.offsetHeight]
+      labelDeclutter.report(`w:${website.id}`, {
+        x: ((screenPosition.x + 1) / 2) * viewport.width,
+        y: ((1 - screenPosition.y) / 2) * viewport.height + offset,
+        halfWidth: f.labelBox[0] / 2,
+        halfHeight: f.labelBox[1] / 2,
+        priority: selected ? 10 : hovered ? 9 : linked ? 6 : 3 + (website.importance ?? 50) / 100,
+      })
+      const cleared = selected || hovered || !labelDeclutter.isHidden(`w:${website.id}`)
+      f.label += ((cleared ? 1 : 0) - f.label) * k
+      label.style.transform = `translateY(${offset.toFixed(1)}px)`
+      label.style.opacity = String(f.visibility * f.label * (hovered || selected ? 1 : named && !linked ? 0.8 : 0.7))
+    } else if (f.labelBox[0] !== 0) {
+      f.labelBox = [0, 0]
+      labelDeclutter.remove(`w:${website.id}`)
     }
   }, -1)
 
-  const showLabel = hovered || selected || linked
+  const showLabel = hovered || selected || linked || named
 
   return (
     <>
@@ -161,7 +187,7 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio 
         {showLabel && (
           <Html center zIndexRange={[6, 0]} style={{ pointerEvents: 'none' }}>
             <div ref={labelRef} style={{ opacity: 0 }}>
-              <WebsiteLabel name={website.name} selected={selected} muted={linked && !hovered && !selected} />
+              <WebsiteLabel name={website.name} selected={selected} muted={(linked || named) && !hovered && !selected} />
             </div>
           </Html>
         )}

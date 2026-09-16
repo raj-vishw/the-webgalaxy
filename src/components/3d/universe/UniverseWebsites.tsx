@@ -9,6 +9,7 @@ import { importanceFor } from '../../../utils/celestial'
 import { generateOrbits } from '../../../utils/generateOrbits'
 import { generatePositions } from '../../../utils/generatePositions'
 import { CelestialObject } from '../celestial/CelestialObject'
+import { NeighbourhoodCaptions } from './NeighbourhoodCaptions'
 import { WebsitePoints } from './WebsitePoints'
 
 interface UniverseWebsitesProps {
@@ -18,17 +19,26 @@ interface UniverseWebsitesProps {
 }
 
 const ENTRY_DURATION = 4.4
+/**
+ * Inside the entered universe only its most prominent websites are full
+ * bodies; the rest stay bright, hoverable points until they matter. Fewer on
+ * lower tiers.
+ */
+const DETAILED_IN_UNIVERSE: Record<QualityProfile['tier'], number> = { high: 16, medium: 12, low: 8 }
+/** How many of those carry a permanent name. */
+const NAMED_IN_UNIVERSE: Record<QualityProfile['tier'], number> = { high: 8, medium: 6, low: 4 }
 
 /**
  * The websites living inside one universe, placed and set in motion
  * procedurally. Rendered in universe-local space (unscaled), so object sizes
  * are in world units.
  *
- * Detail is budgeted: the entered universe draws full celestial objects for
- * its most prominent websites (up to `profile.maxDetailed`); everywhere else
- * a website is a point in the universe's cloud unless it is specifically
- * relevant right now (selected, hovered, highlighted, or at the end of a
- * drawn connection). That keeps the scene affordable at 1,000+ websites.
+ * Detail is tiered: the entered universe draws full celestial objects for
+ * its most prominent websites (`DETAILED_IN_UNIVERSE`, within the graphics
+ * profile's overall budget) and names the top few; every other website is a
+ * point in the universe's cloud unless it is specifically relevant right now
+ * (selected, hovered, highlighted, or at the end of a drawn connection).
+ * That keeps the scene affordable and legible at 1,000+ websites.
  */
 export function UniverseWebsites({ universe, profile, pixelRatio }: UniverseWebsitesProps) {
   const active = useGalaxyStore((s) => s.activeUniverseId === universe.id)
@@ -50,14 +60,15 @@ export function UniverseWebsites({ universe, profile, pixelRatio }: UniverseWebs
     return [...ids].filter((id) => websites.some((w) => w.id === id)).sort().join('|')
   })
 
-  const orbits = useMemo(() => {
-    const positions = generatePositions(universe, websites)
-    return generateOrbits(universe, websites, positions)
-  }, [universe, websites])
+  const placement = useMemo(() => generatePositions(universe, websites), [universe, websites])
+  const orbits = useMemo(
+    () => generateOrbits(universe, websites, placement.positions, placement.interior),
+    [universe, websites, placement],
+  )
 
-  const { detailed, pointed } = useMemo(() => {
+  const { detailed, pointed, named } = useMemo(() => {
     const pinned = new Set(pinnedKey ? pinnedKey.split('|') : [])
-    const budget = active ? profile.maxDetailed : 0
+    const budget = active ? Math.min(profile.maxDetailed, DETAILED_IN_UNIVERSE[profile.tier]) : 0
     const byProminence = [...websites].sort((a, b) => importanceFor(b) - importanceFor(a))
     const detailedIds = new Set<string>(pinned)
     for (const w of byProminence) {
@@ -69,8 +80,9 @@ export function UniverseWebsites({ universe, profile, pixelRatio }: UniverseWebs
     return {
       detailed: websites.filter((w) => detailedIds.has(w.id)),
       pointed: websites.filter((w) => !detailedIds.has(w.id)),
+      named: new Set(active ? byProminence.slice(0, NAMED_IN_UNIVERSE[profile.tier]).map((w) => w.id) : []),
     }
-  }, [websites, active, pinnedKey, profile.maxDetailed])
+  }, [websites, active, pinnedKey, profile.maxDetailed, profile.tier])
 
   // Entering the universe replays a staged reveal: stars, then planets, then
   // moons and comets. Leaving restores full visibility for free exploration.
@@ -104,10 +116,13 @@ export function UniverseWebsites({ universe, profile, pixelRatio }: UniverseWebs
             orbit={orbit}
             profile={profile}
             pixelRatio={pixelRatio}
+            interior={placement.interior}
+            named={named.has(website.id)}
           />
         )
       })}
-      <WebsitePoints universe={universe} websites={pointed} orbits={orbits} pixelRatio={pixelRatio} />
+      <WebsitePoints universe={universe} websites={pointed} orbits={orbits} pixelRatio={pixelRatio} interior={placement.interior} interactive={active} />
+      {active && <NeighbourhoodCaptions universe={universe} neighbourhoods={placement.neighbourhoods} />}
     </group>
   )
 }

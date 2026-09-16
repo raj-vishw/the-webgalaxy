@@ -12,6 +12,7 @@ import {
   type Obstacle,
 } from '../../../utils/camera'
 import { sizeFor } from '../../../utils/celestial'
+import { interiorScale } from '../../../utils/generatePositions'
 
 /**
  * A resolved camera journey: where to look, where to stand, and optionally a
@@ -61,6 +62,9 @@ function obstaclesAround(website: WebsiteDefinition): Obstacle[] {
   return out
 }
 
+/** Interior growth of a universe for its current population. */
+const interiorOf = (universeId: string) => interiorScale(websitesInUniverse(universeId).length)
+
 /** Where the camera should go for the current navigation state, or null to stay. */
 export function resolveDestination(ctx: TargetingContext): CameraDestination | null {
   const { viewMode, previousMode, activeUniverseId, selectedWebsiteId, cameraPosition, overview } = ctx
@@ -86,8 +90,9 @@ export function resolveDestination(ctx: TargetingContext): CameraDestination | n
     const universe = getCatalog().universes.find((u) => u.id === activeUniverseId)
     const object = celestialRegistry.get(activeUniverseId)
     if (!universe || !object) return null
-    const distance = universeViewDistance(universe)
-    const direction = approachDirection(cameraPosition, object.getWorldPosition(focusPoint), 0.28).clone()
+    const distance = universeViewDistance(universe, interiorOf(universe.id))
+    // A little more from above than the galaxy overview, so neighbourhoods read as a map.
+    const direction = approachDirection(cameraPosition, object.getWorldPosition(focusPoint), 0.42).clone()
     return {
       focus: () => object.getWorldPosition(focusPoint),
       position: (focus) => poseFrom(focus, direction, distance, destinationPosition),
@@ -124,7 +129,7 @@ export function resolveDestination(ctx: TargetingContext): CameraDestination | n
         const towards = approachDirection(cameraPosition, universeCentre, 0.28, new Vector3())
         waypoint = {
           target: universeCentre.clone(),
-          position: universeCentre.clone().addScaledVector(towards, universeViewDistance(universe) * 1.1),
+          position: universeCentre.clone().addScaledVector(towards, universeViewDistance(universe, interiorOf(universe.id)) * 1.1),
         }
       }
     }

@@ -325,11 +325,12 @@ export const websitePointVertexShader = /* glsl */ `
   attribute vec3 aColor;
   uniform float uPixelRatio;
   uniform float uTime;
+  uniform float uScale; // 1 from afar; larger inside the entered universe, where points are the minor websites
   varying vec3 vColor;
   varying float vAlpha;
   void main() {
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    float size = aSize * (1.0 + 0.5 * aBoost) * uPixelRatio * (300.0 / max(-mv.z, 1.0));
+    float size = aSize * uScale * (1.0 + 0.5 * aBoost) * uPixelRatio * (300.0 / max(-mv.z, 1.0));
     gl_PointSize = clamp(size, 1.5, 26.0 * uPixelRatio);
     gl_Position = projectionMatrix * mv;
     float pulse = 1.0 + 0.08 * aBoost * sin(uTime * 3.0);

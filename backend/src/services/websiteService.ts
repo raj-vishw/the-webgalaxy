@@ -27,6 +27,7 @@ export interface PublicWebsiteLight {
   isEmerging: boolean
   accent: string | null
   glyph: string | null
+  topic: string | null
   logoUrl: string | null
   /** Slug of the website this moon circles (visual arrangement only). */
   orbitAnchorId: string | null
@@ -70,6 +71,7 @@ export function toLight(r: WebsiteRecord): PublicWebsiteLight {
     isEmerging: r.isEmerging,
     accent: r.accent,
     glyph: r.glyph,
+    topic: r.topic,
     logoUrl: r.logoUrl,
     orbitAnchorId: r.anchorSlug,
     tags: r.tags,

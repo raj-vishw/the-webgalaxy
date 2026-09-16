@@ -32,6 +32,8 @@ export function WebGalaxyScene() {
       gl={{ antialias: false, powerPreference: 'high-performance', alpha: false, stencil: false }}
       flat
       onPointerMissed={() => useGalaxyStore.getState().clearWebsite()}
+      // Points (the non-detailed websites) answer the pointer within this many world units.
+      raycaster={{ params: { Points: { threshold: 1.4 }, Line: { threshold: 1 }, Mesh: {}, LOD: {}, Sprite: {} } }}
       onCreated={() => useGalaxyStore.getState().setSceneReady(true)}
     >
       <color attach="background" args={[BACKGROUND]} />

@@ -33,6 +33,7 @@ export interface ApiWebsiteLight {
   isEmerging: boolean
   accent: string | null
   glyph: string | null
+  topic: string | null
   logoUrl: string | null
   orbitAnchorId: string | null
   tags: string[]

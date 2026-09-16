@@ -57,10 +57,11 @@ export function glowFor(website: WebsiteDefinition): number {
  * objects become visible from further away, so a universe reveals its major
  * stars first as you approach, then planets, then the small things.
  */
-export function fadeDistancesFor(website: WebsiteDefinition, universe: UniverseDefinition) {
+export function fadeDistancesFor(website: WebsiteDefinition, universe: UniverseDefinition, interior = 1) {
   const importance = importanceFor(website)
-  const far = universe.scale * (4.5 + 3.5 * importance)
-  return { near: far - universe.scale * 1.5, far }
+  const reach = universe.scale * interior
+  const far = reach * (4.5 + 3.5 * importance)
+  return { near: far - reach * 1.5, far }
 }
 
 /** Window (0–1) of the universe-entry reveal in which each type appears. */

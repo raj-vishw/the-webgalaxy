@@ -61,9 +61,11 @@ Light record (what the galaxy renders from):
 ```jsonc
 { "id": "…", "slug": "github", "name": "GitHub", "url": "https://github.com/", "universeId": "…", "universeSlug": "development",
   "objectType": "star", "importance": 100, "popularityScore": 100, "trendingScore": 0, "trendDirection": "steady",
-  "isTrending": false, "isEmerging": false, "accent": "#f0f6fc", "glyph": "GH", "logoUrl": null,
+  "isTrending": false, "isEmerging": false, "accent": "#f0f6fc", "glyph": "GH", "topic": null, "logoUrl": null,
   "orbitAnchorId": null, "tags": ["git", "open-source"], "positionSeed": 584874290 }
 ```
+
+`topic` (optional) names the website's neighbourhood inside its universe — websites sharing one are placed together. It groups; it never ranks or nests.
 
 Full record adds `description`, `isActive`, `createdAt`, `updatedAt`, `relationships: Relationship[]`.
 

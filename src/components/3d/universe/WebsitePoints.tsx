@@ -1,8 +1,10 @@
-import { useFrame } from '@react-three/fiber'
-import { useEffect, useMemo, useRef } from 'react'
-import { AdditiveBlending, BufferAttribute, Color, Group, MathUtils, Object3D, ShaderMaterial, Vector3 } from 'three'
+import { useCursor } from '@react-three/drei'
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, Group, MathUtils, Object3D, ShaderMaterial, Sphere, Vector3 } from 'three'
 import { celestialRegistry } from '../../../lib/celestialRegistry'
 import { sceneMotion } from '../../../lib/sceneMotion'
+import { useGalaxyStore } from '../../../store/galaxyStore'
 import type { UniverseDefinition, WebsiteDefinition } from '../../../types/galaxy'
 import { accentFor, fadeDistancesFor, glowFor, sizeFor } from '../../../utils/celestial'
 import { orbitPosition, type OrbitSpec } from '../../../utils/generateOrbits'
@@ -13,6 +15,10 @@ interface WebsitePointsProps {
   websites: WebsiteDefinition[]
   orbits: Map<string, OrbitSpec>
   pixelRatio: number
+  /** Interior growth of the universe for its population (see `interiorScale`). */
+  interior?: number
+  /** Inside the entered universe points answer the pointer: hover names them, click focuses. */
+  interactive?: boolean
 }
 
 const SIZE_BY_TYPE = { star: 1.9, planet: 1.25, moon: 0.85, comet: 1.0 } as const
@@ -28,21 +34,51 @@ const anchorPosition = new Vector3()
  * connection lines can target them. The moment one is selected, hovered or
  * connected, `UniverseWebsites` promotes it to a full object.
  */
-export function WebsitePoints({ universe, websites, orbits, pixelRatio }: WebsitePointsProps) {
+export function WebsitePoints({ universe, websites, orbits, pixelRatio, interior = 1, interactive = false }: WebsitePointsProps) {
   const groupRef = useRef<Group>(null)
   const positionRef = useRef<BufferAttribute>(null)
   const alphaRef = useRef<BufferAttribute>(null)
   const boostRef = useRef<BufferAttribute>(null)
   const materialRef = useRef<ShaderMaterial>(null)
+  const geometryRef = useRef<BufferGeometry>(null)
   const timeRef = useRef(0)
 
   const entries = useMemo(
     () =>
       websites
-        .map((website) => ({ website, orbit: orbits.get(website.id), fade: fadeDistancesFor(website, universe) }))
+        .map((website) => ({ website, orbit: orbits.get(website.id), fade: fadeDistancesFor(website, universe, interior) }))
         .filter((e): e is { website: WebsiteDefinition; orbit: OrbitSpec; fade: { near: number; far: number } } => !!e.orbit),
-    [websites, orbits, universe],
+    [websites, orbits, universe, interior],
   )
+
+  // Pointer handling: a hovered point is promoted to a full object by
+  // `UniverseWebsites` (through the store), which then owns the interaction.
+  const [hovered, setHovered] = useState(false)
+  const setHoveredWebsite = useGalaxyStore((s) => s.setHoveredWebsite)
+  const selectWebsite = useGalaxyStore((s) => s.selectWebsite)
+  useCursor(interactive && hovered)
+  const alphasRef = useRef<Float32Array | null>(null)
+  const pick = (e: ThreeEvent<PointerEvent | MouseEvent>) => {
+    const index = e.index ?? -1
+    const entry = entries[index]
+    // Points that have faded out (distance, filters) must not react.
+    if (!entry || (alphasRef.current?.[index] ?? 0) < 0.25) return null
+    return entry.website
+  }
+  const onPointerMove = (e: ThreeEvent<PointerEvent>) => {
+    const website = interactive ? pick(e) : null
+    if (!website) return
+    e.stopPropagation()
+    setHovered(true)
+    setHoveredWebsite(website.id)
+  }
+  const onPointerOut = () => setHovered(false)
+  const onClick = (e: ThreeEvent<MouseEvent>) => {
+    const website = interactive ? pick(e) : null
+    if (!website) return
+    e.stopPropagation()
+    selectWebsite(website.id, website.universeId)
+  }
 
   const buffers = useMemo(() => {
     const n = entries.length
@@ -74,7 +110,9 @@ export function WebsitePoints({ universe, websites, orbits, pixelRatio }: Websit
     }
   }, [entries, placeholders])
 
-  const uniforms = useMemo(() => ({ uPixelRatio: { value: pixelRatio }, uTime: { value: 0 } }), [pixelRatio])
+  const uniforms = useMemo(() => ({ uPixelRatio: { value: pixelRatio }, uTime: { value: 0 }, uScale: { value: 1 } }), [pixelRatio])
+  /** Inside the entered universe the points stand for real websites: bigger and brighter. */
+  const INSIDE_SCALE = 4.2
 
   useFrame(({ camera }, delta) => {
     const position = positionRef.current
@@ -84,11 +122,14 @@ export function WebsitePoints({ universe, websites, orbits, pixelRatio }: Websit
     if (!position || !alpha || !boost || !material || !groupRef.current) return
     timeRef.current += delta * sceneMotion.motionScale
     material.uniforms.uTime.value += delta
+    const scaleTarget = interactive ? INSIDE_SCALE : 1
+    material.uniforms.uScale.value += (scaleTarget - material.uniforms.uScale.value) * (1 - Math.exp(-delta * 3))
     const { emphasis, filter, relations } = sceneMotion
     const entry = sceneMotion.universeEntry[universe.id] ?? 1
     const pos = position.array as Float32Array
     const alphas = alpha.array as Float32Array
     const boosts = boost.array as Float32Array
+    alphasRef.current = alphas
     const t = timeRef.current
 
     entries.forEach(({ website, orbit, fade }, i) => {
@@ -112,20 +153,28 @@ export function WebsitePoints({ universe, websites, orbits, pixelRatio }: Websit
       if (emphasized || connected) visibility = Math.max(visibility, 0.9)
       else if (emphasis.active) visibility *= 1 - emphasis.dimOthers
       if (filter.active && !filter.websiteIds.has(website.id)) visibility *= 0.15
-      alphas[i] = visibility * (0.55 + 0.45 * glowFor(website))
+      alphas[i] = visibility * (0.55 + 0.45 * glowFor(website)) * (interactive ? 1.25 : 1)
       boosts[i] = emphasized ? 1 : connected ? 0.6 : 0
     })
     position.needsUpdate = true
     alpha.needsUpdate = true
     boost.needsUpdate = true
+    // Raycasting rejects against the bounding sphere first; keep it honest as
+    // the points move (it would otherwise stay at the zeroed initial buffer).
+    const geometry = geometryRef.current
+    if (interactive && geometry) {
+      if (!geometry.boundingSphere) geometry.boundingSphere = new Sphere()
+      geometry.computeBoundingSphere()
+    }
   })
 
   if (!entries.length) return <group ref={groupRef} />
 
   return (
     <group ref={groupRef}>
-      <points frustumCulled={false}>
-        <bufferGeometry>
+      {/* Handlers are always attached (the event system registers them on mount); they act only inside the entered universe. */}
+      <points frustumCulled={false} onPointerMove={onPointerMove} onPointerOut={onPointerOut} onClick={onClick}>
+        <bufferGeometry ref={geometryRef}>
           <bufferAttribute ref={positionRef} attach="attributes-position" args={[buffers.positions, 3]} />
           <bufferAttribute attach="attributes-aSize" args={[buffers.sizes, 1]} />
           <bufferAttribute attach="attributes-aColor" args={[buffers.colors, 3]} />

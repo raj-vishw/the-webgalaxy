@@ -46,8 +46,19 @@ export function WebsiteInteraction({ website, radius, frame }: WebsiteInteractio
     selectWebsite(website.id, website.universeId)
   }
 
-  useEffect(() => () => {
-    useGalaxyStore.setState((s) => (s.hoveredWebsiteId === website.id ? { hoveredWebsiteId: null } : s))
+  // A website that leaves the scene while hovered releases the hover — but
+  // only on a real unmount. A point promoted to a full object mounts while
+  // it is already the hovered website, and StrictMode's rehearsal unmount
+  // must not clear that, so the check is deferred past any remount.
+  const mountedRef = useRef(false)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      queueMicrotask(() => {
+        if (!mountedRef.current) useGalaxyStore.setState((s) => (s.hoveredWebsiteId === website.id ? { hoveredWebsiteId: null } : s))
+      })
+    }
   }, [website.id])
 
   return (

@@ -82,6 +82,11 @@ export interface WebsiteDefinition {
   accent?: string
   /** 1–4 character monogram integrated into the object's surface; derived from the name if omitted. */
   glyph?: string
+  /**
+   * Optional sub-topic inside the universe ("Jazz", "Law"). Websites sharing a
+   * topic are placed as a neighbourhood; it groups, it never ranks or nests.
+   */
+  topic?: string
   /** Picks one of the procedural surface patterns; derived from the id if omitted. */
   visualVariant?: number
   /** Optional multiplier on the importance-derived size. */

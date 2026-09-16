@@ -97,7 +97,17 @@ for (const w of seedWebsites) {
     isEmerging: !!trend?.emerging,
     accent: w.accent ?? null,
     glyph: w.glyph ?? null,
+    topic: w.topic ?? null,
     positionSeed: hashString(w.id),
+  }
+  // The same URL under a different slug (a regenerated import renamed it):
+  // carry the existing row over to the new slug rather than tripping the
+  // unique index.
+  if (values.urlNormalized) {
+    await db
+      .update(websites)
+      .set({ slug: values.slug })
+      .where(sql`${websites.urlNormalized} = ${values.urlNormalized} and ${websites.slug} <> ${values.slug}`)
   }
   const [row] = await db
     .insert(websites)

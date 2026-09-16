@@ -23,6 +23,7 @@ interface Draft {
   isActive: boolean
   accent: string
   glyph: string
+  topic: string
   orbitAnchorId: string
   tags: string
 }
@@ -44,6 +45,7 @@ const draftOf = (w: Website | null, universeSlug = ''): Draft => ({
   isActive: w?.isActive ?? true,
   accent: w?.accent ?? '',
   glyph: w?.glyph ?? '',
+  topic: w?.topic ?? '',
   orbitAnchorId: w?.orbitAnchorId ?? '',
   tags: w?.tags.join(', ') ?? '',
 })
@@ -65,6 +67,7 @@ const toBody = (d: Draft) => ({
   isActive: d.isActive,
   accent: d.accent.trim() || null,
   glyph: d.glyph.trim() || null,
+  topic: d.topic.trim() || null,
   orbitAnchorId: d.orbitAnchorId.trim() || null,
   tags: d.tags.split(',').map((t) => t.trim()).filter(Boolean),
 })
@@ -148,6 +151,7 @@ function Editor({ website, universes, onSaved, onClose }: { website: Website | n
         {text('popularityScore', 'Popularity 0–100 (manual for now)', { type: 'number', min: 0, max: 100 })}
         {text('accent', 'Accent colour', { placeholder: '#7fd1b9' })}
         {text('glyph', 'Glyph (1–4 chars)', { maxLength: 4 })}
+        {text('topic', 'Topic (neighbourhood inside the universe)', { placeholder: 'e.g. Jazz', maxLength: 60 })}
         {text('orbitAnchorId', 'Orbit anchor slug (moons only)', { placeholder: 'e.g. github' })}
         <div className="grid gap-2 rounded-md border border-gray-200 p-3">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Trend snapshot (admin-controlled)</p>

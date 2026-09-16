@@ -99,6 +99,8 @@ export const websites = pgTable(
     /** Brand accent (#hex) and 1–4 character monogram; both optional. */
     accent: text('accent'),
     glyph: text('glyph'),
+    /** Optional sub-topic within the universe ("Jazz", "Law"); websites sharing one cluster together. Never a hierarchy. */
+    topic: text('topic'),
     /** Moons only: the website whose position this moon circles. Visual only. */
     orbitAnchorId: uuid('orbit_anchor_id').references((): any => websites.id, { onDelete: 'set null' }),
     /** Deterministic seed for procedural placement; derived from the slug on insert. */

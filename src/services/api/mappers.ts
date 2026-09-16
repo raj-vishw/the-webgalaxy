@@ -36,6 +36,7 @@ export function mapWebsite(w: ApiWebsiteLight | ApiWebsiteFull): WebsiteDefiniti
     tags: w.tags,
     accent: w.accent ?? undefined,
     glyph: w.glyph ?? undefined,
+    topic: w.topic ?? undefined,
     orbitAnchorId: w.orbitAnchorId ?? undefined,
     logo: w.logoUrl ?? undefined,
     popularity: w.popularityScore,
