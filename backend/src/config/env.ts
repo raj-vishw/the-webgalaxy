@@ -10,7 +10,7 @@ const schema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
   HOST: z.string().default('0.0.0.0'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-  DATABASE_URL: z.preprocess((v) => (v === '' ? undefined : v), z.string().url().optional()),
+  DATABASE_URL: z.string().url().optional(),
   PGLITE_DIR: z.string().default('./data/pglite'),
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
   JWT_SECRET: z.string().min(16).default('dev-only-secret-change-me-please'),
@@ -38,6 +38,9 @@ const DATABASE_URL_ALIASES = ['DATABASE_URL', 'POSTGRES_PRISMA_URL', 'POSTGRES_U
 
 export function loadEnv(overrides: Partial<Record<keyof Env, string>> = {}): Env {
   const source: Record<string, string | undefined> = { ...process.env, ...overrides }
+  // A variable set to an empty string (a blank row in a hosting dashboard,
+  // a pasted .env.example) means "not set": the default applies.
+  for (const key of Object.keys(source)) if (source[key] !== undefined && source[key]!.trim() === '') delete source[key]
   if (!source.DATABASE_URL) source.DATABASE_URL = DATABASE_URL_ALIASES.map((name) => source[name]).find((v) => v && v.trim())
   const parsed = schema.safeParse(source)
   if (!parsed.success) {

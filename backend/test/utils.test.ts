@@ -45,6 +45,14 @@ describe('passwords', () => {
 })
 
 describe('environment', () => {
+  it('treats blank variables as unset', async () => {
+    const { loadEnv } = await import('../src/config/env.ts')
+    const env = loadEnv({ PORT: '', LOG_LEVEL: '', RATE_LIMIT_GLOBAL: '  ', ADMIN_PASSWORD: '' })
+    assert.equal(env.PORT, 4000)
+    assert.equal(env.LOG_LEVEL, 'info')
+    assert.equal(env.RATE_LIMIT_GLOBAL, 300)
+  })
+
   it('accepts a hosting integration\'s POSTGRES_URL as the database URL', async () => {
     const { loadEnv } = await import('../src/config/env.ts')
     const before = process.env.POSTGRES_URL
