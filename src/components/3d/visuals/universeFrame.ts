@@ -1,3 +1,4 @@
+import { createLabelBox, type LabelBox } from '../../../lib/labelBox'
 /**
  * Per-universe values that change every frame (reveal progress and eased hover
  * amount). The owning `Universe` writes them; its visual children read them in
@@ -10,9 +11,8 @@ export interface UniverseFrameState {
   dim: number
   /** 0 → 1: label visibility after screen-space decluttering. */
   label: number
-  /** Cached label box (CSS px), re-measured now and then to avoid layout reads every frame. */
-  labelBox: [width: number, height: number]
-  frames: number
+  /** Cached label box (CSS px), measured on a slow schedule (see lib/labelBox). */
+  labelBox: LabelBox
 }
 
-export const createUniverseFrameState = (): UniverseFrameState => ({ reveal: 0, hover: 0, dim: 0, label: 1, labelBox: [0, 0], frames: 0 })
+export const createUniverseFrameState = (name = '', seed = 0): UniverseFrameState => ({ reveal: 0, hover: 0, dim: 0, label: 1, labelBox: createLabelBox(name.toUpperCase(), seed, 9) })

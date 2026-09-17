@@ -1,5 +1,5 @@
 /**
- * `npm run db:seed [-- --reset]`
+ * `npm run db:seed [-- --reset [--yes]]`
  *
  * Migrates the bundled catalogue into the database: universes, websites
  * (curated + directory import), tags, relationships and the static trend
@@ -24,6 +24,7 @@ import { hashString } from '../src/utils/slug.ts'
 import { parseWebsiteUrl } from '../src/utils/url.ts'
 
 const reset = process.argv.includes('--reset')
+const confirmed = process.argv.includes('--yes')
 /** Curated entries first: they win over a directory import of the same slug. */
 const seedWebsites = [...curatedWebsites, ...directoryWebsites]
 const seedRelationships = [...curatedRelationships, ...directoryRelationships]
@@ -34,6 +35,12 @@ await handle.migrate()
 
 const log = (msg: string, extra: Record<string, unknown> = {}) => console.log(`[seed] ${msg}`, Object.keys(extra).length ? extra : '')
 
+if (reset && handle.kind === 'postgres' && !confirmed) {
+  // `backend/.env` may point at a hosted database: never wipe one by accident.
+  console.error('[seed] --reset would empty a remote PostgreSQL database; re-run with --yes if that is intended.')
+  await handle.close()
+  process.exit(1)
+}
 if (reset) {
   for (const table of [adminAuditLog, submissions, websiteRelationships, websiteTags, websites, tags, universes, adminUsers]) {
     await db.delete(table)

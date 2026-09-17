@@ -5,6 +5,7 @@ import { Group, MathUtils, PerspectiveCamera, Vector3 } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import { celestialRegistry } from '../../../lib/celestialRegistry'
 import { labelDeclutter } from '../../../lib/labelDeclutter'
+import { measureLabel } from '../../../lib/labelBox'
 import { buildUniverseGeometry } from '../../../lib/universeGeometry'
 import { sceneMotion } from '../../../lib/sceneMotion'
 import { interiorScale } from '../../../utils/generatePositions'
@@ -38,6 +39,10 @@ const PROXIMITY_DIM = 0.74
 const DISTANT_DIM = 0.3
 /** Gap between the structure's projected edge and its label, in CSS pixels. */
 const LABEL_GAP_PX = 12
+/** Depth haze: universes further from the camera than this fade toward the background. */
+const HAZE_NEAR = 300
+const HAZE_FAR = 620
+const HAZE_AMOUNT = 0.45
 
 const worldPosition = new Vector3()
 const screenPosition = new Vector3()
@@ -52,7 +57,7 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
   const rootRef = useRef<Group>(null)
   const spinRef = useRef<Group>(null)
   const labelRef = useRef<HTMLDivElement>(null)
-  const frameRef = useRef<UniverseFrameState>(createUniverseFrameState())
+  const frameRef = useRef<UniverseFrameState>(createUniverseFrameState(definition.name, definition.seed))
   const [hovered, setHovered] = useState(false)
   const active = useGalaxyStore((s) => s.activeUniverseId === definition.id)
   const dimmed = useGalaxyStore((s) => s.activeUniverseId === definition.id && s.selectedWebsiteId !== null)
@@ -93,7 +98,9 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
     const emphasisBoost = emphasized ? 0.5 * (1 - proximity) : 0
     frame.hover += (Math.max(hovered && !active ? 1 : 0, selectedBoost, emphasisBoost) - frame.hover) * k
     const quieted = emphasis.active && !emphasized ? emphasis.dimOthers * 0.6 : 0
-    const dimTarget = Math.max(dimmed ? DIM_AMOUNT : 0, proximity * PROXIMITY_DIM, distant ? DISTANT_DIM : 0, quieted)
+    // Depth cue: the far side of the galaxy is hazier and quieter than the near side.
+    const haze = MathUtils.smoothstep(distance, HAZE_NEAR, HAZE_FAR) * HAZE_AMOUNT
+    const dimTarget = Math.max(dimmed ? DIM_AMOUNT : 0, proximity * PROXIMITY_DIM, distant ? DISTANT_DIM : 0, quieted, haze)
     frame.dim += (dimTarget - frame.dim) * k * 0.6
 
     const scale = definition.scale * (1 + (HOVER_SCALE - 1) * frame.hover)
@@ -112,17 +119,18 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
       // Where the label lands on screen, for the shared declutter pass.
       screenPosition.copy(worldPosition).project(camera)
       const behind = screenPosition.z > 1
-      if (frame.labelBox[0] === 0 || frame.frames++ % 90 === 0) frame.labelBox = [label.offsetWidth, label.offsetHeight]
+      const box = measureLabel(frame.labelBox, label)
       labelDeclutter.report(definition.id, {
         x: ((screenPosition.x + 1) / 2) * size.width,
         y: ((1 - screenPosition.y) / 2) * size.height + offset,
-        halfWidth: frame.labelBox[0] / 2,
-        halfHeight: frame.labelBox[1] / 2,
+        halfWidth: box.width / 2,
+        halfHeight: box.height / 2,
         priority: (hovered ? 2 : 0) + (active ? 1 : 0) + (behind ? -10 : 0) - distance / 1000,
       })
       frame.label += ((labelDeclutter.isHidden(definition.id) || behind ? 0 : 1) - frame.label) * k
-      label.style.opacity = String(frame.reveal * proximityFade * sceneMotion.labelReveal * frame.label)
-      label.style.transform = `translateY(${offset.toFixed(1)}px)`
+      label.style.opacity = String(frame.reveal * proximityFade * sceneMotion.labelReveal * frame.label * (1 - haze * 0.9))
+      // Far labels shrink a touch, another depth cue.
+      label.style.transform = `translateY(${offset.toFixed(1)}px) scale(${(1 - haze * 0.35).toFixed(3)})`
     }
   }, -1)
 

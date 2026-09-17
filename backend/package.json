@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.6.0",
   "type": "module",
-  "description": "The WebGalaxy API — powers the galaxy from PostgreSQL",
+  "description": "The WebGalaxy API \u2014 powers the galaxy from PostgreSQL",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
@@ -15,7 +15,8 @@
     "db:reset": "tsx scripts/seed.ts --reset",
     "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts",
     "import:curlie": "tsx --tsconfig tsconfig.scripts.json scripts/import-curlie.ts",
-    "logos": "tsx --tsconfig tsconfig.scripts.json scripts/fetch-logos.ts"
+    "logos": "tsx --tsconfig tsconfig.scripts.json scripts/fetch-logos.ts",
+    "layout": "tsx --tsconfig tsconfig.scripts.json scripts/layout-galaxy.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

@@ -4,6 +4,7 @@ import gsap from 'gsap'
 import { useEffect, useMemo, useRef } from 'react'
 import { Vector3 } from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { useIdle } from '../../../hooks/useIdle'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import { celestialRegistry } from '../../../lib/celestialRegistry'
 import { registerIntroTimeline } from '../../../lib/intro'
@@ -52,6 +53,8 @@ export function CameraController({ profile }: CameraControllerProps) {
   const hoveredUniverseId = useGalaxyStore((s) => s.hoveredUniverseId)
   const viewMode = useGalaxyStore((s) => s.viewMode)
   const isTransitioning = useGalaxyStore((s) => s.isTransitioning)
+  // Left alone for a few seconds, the overview glides around the galaxy.
+  const idle = useIdle(5000)
 
   const overview = useMemo(() => overviewFor(aspect), [aspect])
 
@@ -142,8 +145,8 @@ export function CameraController({ profile }: CameraControllerProps) {
         maxDistance={maxDistance}
         minPolarAngle={0.12}
         maxPolarAngle={1.4}
-        autoRotate={!profile.reducedMotion && viewMode === 'galaxy' && hoveredUniverseId === null}
-        autoRotateSpeed={0.12}
+        autoRotate={!profile.reducedMotion && viewMode === 'galaxy' && hoveredUniverseId === null && idle}
+        autoRotateSpeed={0.3}
         onStart={() => {
           sceneMotion.dragging = true
         }}

@@ -4,6 +4,7 @@ import { drizzle as drizzlePglite, type PgliteDatabase } from 'drizzle-orm/pglit
 import { migrate as migratePg } from 'drizzle-orm/node-postgres/migrator'
 import { migrate as migratePglite } from 'drizzle-orm/pglite/migrator'
 import { mkdir } from 'node:fs/promises'
+import net from 'node:net'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import pg from 'pg'
@@ -50,8 +51,20 @@ function sslFor(databaseUrl: string): pg.PoolConfig['ssl'] {
   }
 }
 
+/**
+ * Node tries a host's addresses in turn ("happy eyeballs") and gives each
+ * one only 250 ms by default. A database an ocean away answers slower than
+ * that, so every attempt is abandoned mid-handshake and the driver reports
+ * ETIMEDOUT for a server that is perfectly reachable. Allow a realistic
+ * round trip before giving up on an address.
+ */
+function allowSlowHandshakes() {
+  if (net.getDefaultAutoSelectFamilyAttemptTimeout() < 3000) net.setDefaultAutoSelectFamilyAttemptTimeout(3000)
+}
+
 export async function createDatabase(options: DatabaseOptions): Promise<DatabaseHandle> {
   if (options.databaseUrl) {
+    allowSlowHandshakes()
     const pool = new pg.Pool({ connectionString: options.databaseUrl, ssl: sslFor(options.databaseUrl), max: 10, idleTimeoutMillis: 30_000 })
     const db = drizzlePg(pool, { schema })
     return {

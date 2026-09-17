@@ -5,12 +5,13 @@ import { Group, MathUtils, PerspectiveCamera, Vector3 } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import { celestialRegistry } from '../../../lib/celestialRegistry'
 import { labelDeclutter } from '../../../lib/labelDeclutter'
+import { measureLabel } from '../../../lib/labelBox'
 import type { LogoAtlas } from '../../../lib/logoAtlas'
 import { sceneMotion } from '../../../lib/sceneMotion'
 import { isEmerging, isTrending } from '../../../services/recommendationService'
 import { useGalaxyStore } from '../../../store/galaxyStore'
 import type { UniverseDefinition, WebsiteDefinition } from '../../../types/galaxy'
-import { ENTRY_REVEAL_WINDOW, accentFor, fadeDistancesFor, sizeFor } from '../../../utils/celestial'
+import { ENTRY_REVEAL_WINDOW, accentFor, fadeDistancesFor, hashString, sizeFor } from '../../../utils/celestial'
 import { orbitPosition, type OrbitSpec } from '../../../utils/generateOrbits'
 import { WebsiteLabel } from '../../ui/WebsiteLabel'
 import { WebsiteInteraction } from '../interaction/WebsiteInteraction'
@@ -58,7 +59,7 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio,
   const rootRef = useRef<Group>(null)
   const bodyRef = useRef<Group>(null)
   const labelRef = useRef<HTMLDivElement>(null)
-  const frameRef = useRef(createCelestialFrameState())
+  const frameRef = useRef(createCelestialFrameState(website.name, hashString(website.id)))
 
   const hovered = useGalaxyStore((s) => s.hoveredWebsiteId === website.id)
   const selected = useGalaxyStore((s) => s.selectedWebsiteId === website.id)
@@ -146,20 +147,19 @@ export function CelestialObject({ website, universe, orbit, profile, pixelRatio,
       // Permanent names share the declutter pass with universe labels and
       // topic captions; the focused and hovered names always win.
       screenPosition.copy(worldPosition).project(camera)
-      if (f.labelBox[0] === 0 || f.frames++ % 90 === 0) f.labelBox = [label.offsetWidth, label.offsetHeight]
+      const box = measureLabel(f.labelBox, label)
       labelDeclutter.report(`w:${website.id}`, {
         x: ((screenPosition.x + 1) / 2) * viewport.width,
         y: ((1 - screenPosition.y) / 2) * viewport.height + offset,
-        halfWidth: f.labelBox[0] / 2,
-        halfHeight: f.labelBox[1] / 2,
+        halfWidth: box.width / 2,
+        halfHeight: box.height / 2,
         priority: selected ? 10 : hovered ? 9 : linked ? 6 : 3 + (website.importance ?? 50) / 100,
       })
       const cleared = selected || hovered || !labelDeclutter.isHidden(`w:${website.id}`)
       f.label += ((cleared ? 1 : 0) - f.label) * k
       label.style.transform = `translateY(${offset.toFixed(1)}px)`
       label.style.opacity = String(f.visibility * f.label * (hovered || selected ? 1 : named && !linked ? 0.8 : 0.7))
-    } else if (f.labelBox[0] !== 0) {
-      f.labelBox = [0, 0]
+    } else {
       labelDeclutter.remove(`w:${website.id}`)
     }
   }, -1)

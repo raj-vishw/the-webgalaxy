@@ -4,14 +4,21 @@ import { sceneMotion } from '../../lib/sceneMotion'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { galaxyNavigation } from '../../utils/navigation'
 import { focusRing, glassPanel } from '../ui/panel'
+import { Vector3 } from 'three'
+import { driftedPosition } from '../../utils/universeDrift'
 
 const W = 176
 const H = 116
+/** Height of the side-elevation strip under the map (world y → screen). */
+const STRIP = 22
+const RANGE_Y = 40
 const PAD = 14
 /** World extent (x/z) the map covers, centred on the layout envelope of `data/universes.ts`. */
-const RANGE_X = 180
-const RANGE_Z = 110
-const CENTER_Z = -36
+const RANGE_X = 215
+const RANGE_Z = 150
+const CENTER_Z = 0
+
+const scratch = new Vector3()
 
 const toMap = (x: number, z: number) => ({
   x: PAD + ((x + RANGE_X) / (2 * RANGE_X)) * (W - PAD * 2),
@@ -33,6 +40,14 @@ export function GalaxyMinimap() {
   // The info panel owns the right edge while a website is focused; the map steps aside.
   const aside = useGalaxyStore((s) => s.viewMode === 'website')
   const [cam, setCam] = useState(() => ({ ...sceneMotion.camera }))
+  // The map follows the galaxy's slow rotation and drift; `cam` ticks every 120 ms and is the refresh signal.
+  // (computed on every render: the component re-renders every 120 ms with the camera dot)
+  const live = new Map<string, { x: number; y: number; z: number }>()
+  for (const u of universes) {
+    const v = driftedPosition(u, sceneMotion.driftTime, scratch)
+    live.set(u.id, { x: v.x, y: v.y, z: v.z })
+  }
+  const at = (u: { id: string; position: readonly [number, number, number] }) => live.get(u.id) ?? { x: u.position[0], y: u.position[1], z: u.position[2] }
 
   // A few samples per second is plenty for a map; no per-frame React work.
   useEffect(() => {
@@ -65,9 +80,17 @@ export function GalaxyMinimap() {
           visible ? 'opacity-100 translate-y-0' : 'pointer-events-none h-0 opacity-0 translate-y-2',
         ].join(' ')}
       >
-        <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Galaxy map">
+        <svg width={W} height={H + STRIP} viewBox={`0 0 ${W} ${H + STRIP}`} role="img" aria-label="Galaxy map">
+          {/* Side elevation: where each universe sits above or below the disc. */}
+          <line x1={PAD} x2={W - PAD} y1={H + STRIP / 2} y2={H + STRIP / 2} stroke="#ffffff" strokeOpacity={0.12} />
           {universes.map((u) => {
-            const p = toMap(u.position[0], u.position[2])
+            const v = at(u)
+            const x = PAD + ((v.x + RANGE_X) / (2 * RANGE_X)) * (W - PAD * 2)
+            const y = H + STRIP / 2 - (Math.max(-RANGE_Y, Math.min(RANGE_Y, v.y)) / RANGE_Y) * (STRIP / 2 - 2)
+            return <circle key={`elev-${u.id}`} cx={x} cy={y} r={u.id === activeUniverseId ? 2 : 1.3} fill={u.palette.primary} opacity={0.7} />
+          })}
+          {universes.map((u) => {
+            const p = toMap(at(u).x, at(u).z)
             const active = u.id === activeUniverseId
             return (
               <g key={u.id}>
@@ -77,7 +100,7 @@ export function GalaxyMinimap() {
             )
           })}
           {selectedUniverse && (
-            <circle cx={toMap(selectedUniverse.position[0], selectedUniverse.position[2]).x} cy={toMap(selectedUniverse.position[0], selectedUniverse.position[2]).y} r={5} fill="none" stroke="#ffffff" strokeOpacity={0.8} strokeWidth={1} />
+            <circle cx={toMap(at(selectedUniverse).x, at(selectedUniverse).z).x} cy={toMap(at(selectedUniverse).x, at(selectedUniverse).z).y} r={5} fill="none" stroke="#ffffff" strokeOpacity={0.8} strokeWidth={1} />
           )}
           <g transform={`translate(${camPoint.x} ${camPoint.y})`}>
             <path
@@ -88,7 +111,7 @@ export function GalaxyMinimap() {
             <circle r={2.4} fill="#ffffff" />
           </g>
           {universes.map((u) => {
-            const p = toMap(u.position[0], u.position[2])
+            const p = toMap(at(u).x, at(u).z)
             return (
               <circle
                 key={`hit-${u.id}`}

@@ -13,6 +13,8 @@ import { PointerTracker } from './PointerTracker'
 import { DiscoveryPath } from './relationships/DiscoveryPath'
 import { RelationshipGraph } from './relationships/RelationshipGraph'
 import { StarField } from './StarField'
+import { GalacticDisc } from './GalacticDisc'
+import { GalaxyLife } from './GalaxyLife'
 import { UniverseField } from './UniverseField'
 
 const Effects = lazy(() => import('./Effects'))
@@ -49,7 +51,9 @@ export function WebGalaxyScene() {
       <CameraController profile={profile} />
       <BackgroundNebula />
       <StarField profile={profile} pixelRatio={pixelRatio} />
+      <GalacticDisc profile={profile} pixelRatio={pixelRatio} />
       <UniverseField profile={profile} pixelRatio={pixelRatio} />
+      <GalaxyLife pixelRatio={pixelRatio} reducedMotion={profile.reducedMotion} />
       {/* Connections and the explorer's trail: only what is relevant right now is drawn. */}
       <RelationshipGraph pixelRatio={pixelRatio} reducedMotion={profile.reducedMotion} />
       <DiscoveryPath pixelRatio={pixelRatio} reducedMotion={profile.reducedMotion} />

@@ -1,3 +1,4 @@
+import { createLabelBox, type LabelBox } from '../../../lib/labelBox'
 /**
  * Per-frame state of one website object, written by `CelestialObject` and
  * read by its visual body. Lives in a ref so nothing re-renders at 60 fps.
@@ -20,12 +21,11 @@ export interface CelestialFrameState {
   lod: 'point' | 'full' | 'detail'
   /** 0 → 1: label visibility after screen-space decluttering. */
   label: number
-  /** Cached label box (CSS px) so layout isn't read every frame. */
-  labelBox: [width: number, height: number]
-  frames: number
+  /** Cached label box (CSS px), measured on a slow schedule (see lib/labelBox). */
+  labelBox: LabelBox
 }
 
-export const createCelestialFrameState = (): CelestialFrameState => ({
+export const createCelestialFrameState = (name = '', seed = 0): CelestialFrameState => ({
   visibility: 0,
   hover: 0,
   dim: 0,
@@ -35,6 +35,5 @@ export const createCelestialFrameState = (): CelestialFrameState => ({
   size: 1,
   lod: 'point',
   label: 1,
-  labelBox: [0, 0],
-  frames: 0,
+  labelBox: createLabelBox(name, seed),
 })

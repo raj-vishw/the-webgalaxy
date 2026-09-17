@@ -2,6 +2,7 @@ import { Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useRef } from 'react'
 import { Group, MathUtils, Vector3 } from 'three'
+import { createLabelBox, measureLabel, type LabelBox } from '../../../lib/labelBox'
 import { labelDeclutter } from '../../../lib/labelDeclutter'
 import { sceneMotion } from '../../../lib/sceneMotion'
 import { useGalaxyStore } from '../../../store/galaxyStore'
@@ -26,6 +27,7 @@ export function NeighbourhoodCaptions({ universe, neighbourhoods }: Neighbourhoo
   const groupRef = useRef<Group>(null)
   const labelRefs = useRef<(HTMLDivElement | null)[]>([])
   const eased = useRef<number[]>([])
+  const boxes = useRef<LabelBox[]>([])
   const focused = useGalaxyStore((s) => s.viewMode === 'website')
 
   useEffect(() => () => neighbourhoods.forEach((n) => labelDeclutter.remove(`topic:${universe.id}:${n.topic}`)), [neighbourhoods, universe.id])
@@ -43,11 +45,12 @@ export function NeighbourhoodCaptions({ universe, neighbourhoods }: Neighbourhoo
       screenPosition.copy(worldPosition).project(camera)
       const behind = screenPosition.z > 1
       const id = `topic:${universe.id}:${n.topic}`
+      const box = measureLabel((boxes.current[i] ??= createLabelBox(n.topic.toUpperCase(), i * 17, 9, 12)), label)
       labelDeclutter.report(id, {
         x: ((screenPosition.x + 1) / 2) * size.width,
         y: ((1 - screenPosition.y) / 2) * size.height,
-        halfWidth: label.offsetWidth / 2 || 40,
-        halfHeight: label.offsetHeight / 2 || 7,
+        halfWidth: box.width / 2,
+        halfHeight: box.height / 2,
         priority: behind ? -20 : 0.2,
       })
       const target = behind || labelDeclutter.isHidden(id) || focused ? 0 : 1
