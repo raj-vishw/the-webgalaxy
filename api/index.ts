@@ -37,6 +37,20 @@ async function getApp(): Promise<FastifyInstance> {
 }
 
 export default async function handler(request: IncomingMessage, response: ServerResponse): Promise<void> {
-  const app = await getApp()
+  let app: FastifyInstance
+  try {
+    app = await getApp()
+  } catch (error) {
+    // A misconfigured deployment (no DATABASE_URL, default secrets, an
+    // unreachable database) must say so instead of an opaque platform 500.
+    // Configuration messages name variables, never values.
+    const message = error instanceof Error ? error.message : 'The API could not start.'
+    console.error('[api] cold start failed:', message)
+    response.statusCode = 503
+    response.setHeader('content-type', 'application/json; charset=utf-8')
+    response.setHeader('cache-control', 'no-store')
+    response.end(JSON.stringify({ success: false, error: { code: 'API_UNAVAILABLE', message: `The API is not configured: ${message}` } }))
+    return
+  }
   app.server.emit('request', request, response)
 }

@@ -43,3 +43,17 @@ describe('passwords', () => {
     assert.equal(await verifyPassword('x', 'garbage'), false)
   })
 })
+
+describe('environment', () => {
+  it('accepts a hosting integration\'s POSTGRES_URL as the database URL', async () => {
+    const { loadEnv } = await import('../src/config/env.ts')
+    const before = process.env.POSTGRES_URL
+    process.env.POSTGRES_URL = 'postgresql://user:pw@db.example:5432/galaxy'
+    try {
+      assert.equal(loadEnv({ DATABASE_URL: '' }).DATABASE_URL, 'postgresql://user:pw@db.example:5432/galaxy')
+    } finally {
+      if (before === undefined) delete process.env.POSTGRES_URL
+      else process.env.POSTGRES_URL = before
+    }
+  })
+})

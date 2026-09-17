@@ -28,17 +28,30 @@ const schema = z.object({
 
 export type Env = z.infer<typeof schema>
 
+/**
+ * Names under which hosting integrations hand us a PostgreSQL connection
+ * string — Vercel Postgres / Supabase (`POSTGRES_*`), Neon (`DATABASE_URL`,
+ * `DATABASE_URL_UNPOOLED`), Heroku/Railway (`DATABASE_URL`). The first one
+ * present wins; a pooled URL is preferred for a serverless API.
+ */
+const DATABASE_URL_ALIASES = ['DATABASE_URL', 'POSTGRES_PRISMA_URL', 'POSTGRES_URL', 'POSTGRES_URL_NON_POOLING', 'DATABASE_URL_UNPOOLED'] as const
+
 export function loadEnv(overrides: Partial<Record<keyof Env, string>> = {}): Env {
-  const parsed = schema.safeParse({ ...process.env, ...overrides })
+  const source: Record<string, string | undefined> = { ...process.env, ...overrides }
+  if (!source.DATABASE_URL) source.DATABASE_URL = DATABASE_URL_ALIASES.map((name) => source[name]).find((v) => v && v.trim())
+  const parsed = schema.safeParse(source)
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')
     throw new Error(`Invalid environment: ${issues}`)
   }
   const env = parsed.data
   if (env.NODE_ENV === 'production') {
-    if (env.JWT_SECRET === 'dev-only-secret-change-me-please') throw new Error('JWT_SECRET must be set in production')
-    if (env.ADMIN_PASSWORD === 'change-me-now') throw new Error('ADMIN_PASSWORD must be changed in production')
-    if (!env.DATABASE_URL) throw new Error('DATABASE_URL must be set in production')
+    // Report everything that is missing at once, so one deploy fixes it.
+    const problems: string[] = []
+    if (!env.DATABASE_URL) problems.push('DATABASE_URL must be set (a PostgreSQL connection string; POSTGRES_URL from a Vercel/Supabase/Neon integration also works)')
+    if (env.JWT_SECRET === 'dev-only-secret-change-me-please') problems.push('JWT_SECRET must be set')
+    if (env.ADMIN_PASSWORD === 'change-me-now') problems.push('ADMIN_PASSWORD must be changed')
+    if (problems.length) throw new Error(`${problems.join('; ')} — set these environment variables in production`)
   }
   return env
 }
