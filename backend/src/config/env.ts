@@ -1,3 +1,4 @@
+import { resolve } from 'node:path'
 import { z } from 'zod'
 
 /**
@@ -36,7 +37,24 @@ export type Env = z.infer<typeof schema>
  */
 const DATABASE_URL_ALIASES = ['DATABASE_URL', 'POSTGRES_PRISMA_URL', 'POSTGRES_URL', 'POSTGRES_URL_NON_POOLING', 'DATABASE_URL_UNPOOLED'] as const
 
+/**
+ * `backend/.env` (git-ignored) is read on first use; variables already in the
+ * process environment always win, so a deployment's settings are never
+ * overridden by a stray file.
+ */
+let envFileLoaded = false
+function loadEnvFile() {
+  if (envFileLoaded) return
+  envFileLoaded = true
+  try {
+    process.loadEnvFile(resolve(import.meta.dirname, '../../.env'))
+  } catch {
+    // no .env file — fine
+  }
+}
+
 export function loadEnv(overrides: Partial<Record<keyof Env, string>> = {}): Env {
+  loadEnvFile()
   const source: Record<string, string | undefined> = { ...process.env, ...overrides }
   // A variable set to an empty string (a blank row in a hosting dashboard,
   // a pasted .env.example) means "not set": the default applies.

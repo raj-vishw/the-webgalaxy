@@ -33,9 +33,26 @@ export interface DatabaseOptions {
   pgliteDir?: string
 }
 
+/**
+ * Hosted PostgreSQL almost always requires TLS. When the URL says nothing
+ * about it (no `sslmode` / `ssl` parameter) and the host is not local, TLS is
+ * switched on without certificate pinning; a URL with `sslmode=verify-full`
+ * keeps strict verification.
+ */
+function sslFor(databaseUrl: string): pg.PoolConfig['ssl'] {
+  try {
+    const url = new URL(databaseUrl)
+    if (url.searchParams.has('sslmode') || url.searchParams.has('ssl')) return undefined
+    const local = /^(localhost|127\.0\.0\.1|\[::1\]|db|postgres)$/.test(url.hostname)
+    return local ? undefined : { rejectUnauthorized: false }
+  } catch {
+    return undefined
+  }
+}
+
 export async function createDatabase(options: DatabaseOptions): Promise<DatabaseHandle> {
   if (options.databaseUrl) {
-    const pool = new pg.Pool({ connectionString: options.databaseUrl, max: 10, idleTimeoutMillis: 30_000 })
+    const pool = new pg.Pool({ connectionString: options.databaseUrl, ssl: sslFor(options.databaseUrl), max: 10, idleTimeoutMillis: 30_000 })
     const db = drizzlePg(pool, { schema })
     return {
       db,

@@ -44,7 +44,10 @@ export default async function handler(request: IncomingMessage, response: Server
     // A misconfigured deployment (no DATABASE_URL, default secrets, an
     // unreachable database) must say so instead of an opaque platform 500.
     // Configuration messages name variables, never values.
-    const message = error instanceof Error ? error.message : 'The API could not start.'
+    // Drivers wrap the first failing statement; the reason lives in `cause`.
+    const chain: string[] = []
+    for (let e: unknown = error; e instanceof Error && chain.length < 4; e = e.cause) chain.push(e.message)
+    const message = chain.length ? chain.join(' ← ') : 'The API could not start.'
     console.error('[api] cold start failed:', message)
     response.statusCode = 503
     response.setHeader('content-type', 'application/json; charset=utf-8')
