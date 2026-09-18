@@ -8,7 +8,7 @@ The repository also deploys as a single Vercel project: static site plus one Nod
 Function at `api/index.ts` that wraps the same Fastify app (`vercel.json` rewrites
 `/api/*` and `/health*` to it and everything else to `index.html`). Migrations run on
 the function's cold start; seed the production database once with
-`DATABASE_URL=… npm run db:seed`. See the README's "Deploying to Vercel".
+`DATABASE_URL=… npm run db:seed`. See the README's "Deploying to Vercel". The build also prerenders one static HTML page per universe and website for crawlers (README, *Production*); `vercel.json` sets `cleanUrls` so they answer at the same paths as the deep links, and `VITE_SITE_URL` only needs setting when the canonical origin is not the project's production domain.
 
 ## Topology
 

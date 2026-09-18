@@ -3,6 +3,7 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "cleanUrls": true,
   "functions": {
     "api/index.ts": {
       "includeFiles": "backend/drizzle/**"

@@ -7,6 +7,9 @@ describe('deep links', () => {
     expect(parseLocationPath('/website/github')).toEqual({ websiteId: 'github' })
     expect(parseLocationPath('/website/GitHub/')).toEqual({ websiteId: 'github' })
     expect(parseLocationPath('/universe/ai')).toEqual({ universeId: 'ai' })
+    // The prerendered page's file name, should a host serve it un-cleaned.
+    expect(parseLocationPath('/website/github.html')).toEqual({ websiteId: 'github' })
+    expect(parseLocationPath('/universe/ai.html')).toEqual({ universeId: 'ai' })
     expect(parseLocationPath('/')).toEqual({})
     expect(parseLocationPath('/website/../etc')).toEqual({})
     expect(parseLocationPath('/website/github/extra')).toEqual({})

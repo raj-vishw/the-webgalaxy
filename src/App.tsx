@@ -25,7 +25,7 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { applyLocation, startRouter } from './lib/router'
 import { useCatalogStore } from './store/catalogStore'
 import { useGalaxyStore } from './store/galaxyStore'
-import { locationTitle } from './utils/navigation'
+import { applyDocumentMeta } from './lib/seo'
 
 export default function App() {
   useKeyboardShortcuts()
@@ -57,11 +57,11 @@ export default function App() {
   // The address bar follows the explorer; a deep link is applied once the
   // galaxy is entered (the flight there is the same as any other).
   useEffect(() => {
-    document.title = locationTitle()
+    applyDocumentMeta()
     const stopRouter = startRouter()
     const unsubscribe = useGalaxyStore.subscribe((state, previous) => {
       if (state.viewMode !== previous.viewMode || state.activeUniverseId !== previous.activeUniverseId || state.selectedWebsiteId !== previous.selectedWebsiteId) {
-        document.title = locationTitle()
+        applyDocumentMeta()
       }
       if (state.introPhase === 'complete' && previous.introPhase !== 'complete' && window.location.pathname !== '/') {
         window.setTimeout(() => applyLocation(), 150)

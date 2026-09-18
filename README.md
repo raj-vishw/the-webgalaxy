@@ -73,7 +73,7 @@ Copy the examples and adjust; `.env` files are git-ignored.
 | File | Purpose |
 | --- | --- |
 | `backend/.env.example` → `backend/.env` | API: `DATABASE_URL` (unset = embedded PostgreSQL in `backend/data/`), `PORT`, `CORS_ORIGINS`, `JWT_SECRET`, credentials, rate limits, `LOG_LEVEL`, `TRUST_PROXY` |
-| `.env.example` → `.env` | Public app: `VITE_API_URL` (defaults to `/api`, proxied to the API in development) |
+| `.env.example` → `.env` | Public app: `VITE_API_URL` (defaults to `/api`, proxied to the API in development), `VITE_SITE_URL` (public origin for canonical URLs and the sitemap; on Vercel it defaults to the production domain) |
 
 Only `VITE_*` variables reach the browser — never put secrets in the frontend files. In production the API refuses to start with default secrets or without `DATABASE_URL`.
 
@@ -133,6 +133,7 @@ npm run build:all    # dist/ (web), backend/dist/ (API)
 ```
 
 - **Web** is a static build: host `dist/` on any static host or CDN with a history fallback to `index.html` (deep links are client-side routes). Set `VITE_API_URL` at build time when the API lives on another origin.
+- **Search engines and link previews** never run the scene, so `npm run build` ends with `npm run prerender` (`backend/scripts/prerender.ts`): it writes a static page per universe (`dist/universe/<id>.html`) and per website (`dist/website/<slug>.html`) — the app shell with that page's title, description, canonical and Open Graph tags, JSON-LD, and real linked content in `#root` that React replaces on mount — plus `sitemap.xml` and a `robots.txt` pointing at it. Vercel's `cleanUrls` serves `/website/github` from that file before the SPA rewrite, so one URL is both the crawlable page and the deep link; on another host, map `/website/:slug` → `website/:slug.html` the same way (the app also accepts the `.html` form). Absolute URLs use `VITE_SITE_URL`.
 - **API**: `node backend/dist/server.js` with the environment above, or the image built from `backend/Dockerfile` (`docker compose up` runs PostgreSQL + API). Health: `GET /health` (liveness), `GET /health/ready` (database). Put it behind TLS; set `TRUST_PROXY=true` behind a reverse proxy so rate limits see real client addresses; list the web origin in `CORS_ORIGINS`.
 - Deployment, backups, monitoring and the security checklist: [docs/OPERATIONS.md](docs/OPERATIONS.md).
 

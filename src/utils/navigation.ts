@@ -50,9 +50,10 @@ export function locationPath(): string {
 }
 
 export function parseLocationPath(path: string): { universeId?: string; websiteId?: string } {
-  const universe = path.match(/^\/universe\/([\w-]+)\/?$/)
+  // `.html` is how the prerendered page is stored; the URL people see has none.
+  const universe = path.match(/^\/universe\/([\w-]+)(?:\.html)?\/?$/)
   if (universe) return { universeId: universe[1].toLowerCase() }
-  const website = path.match(/^\/website\/([\w-]+)\/?$/)
+  const website = path.match(/^\/website\/([\w-]+)(?:\.html)?\/?$/)
   if (website) return { websiteId: website[1].toLowerCase() }
   return {}
 }
@@ -65,4 +66,17 @@ export function locationTitle(): string {
   if (viewMode === 'website' && website) return `${website.name} · The WebGalaxy`
   if (viewMode === 'universe' && universe) return `${universe.name} · The WebGalaxy`
   return 'The WebGalaxy'
+}
+
+const DEFAULT_DESCRIPTION = "The WebGalaxy is an immersive 3D map of the web: every universe is a category, every celestial object a website. Explore, search, follow connections and discover what's next."
+
+/** A one-line description of the current location, for the document's meta tags. */
+export function locationDescription(): string {
+  const { viewMode, activeUniverseId, selectedWebsiteId } = useGalaxyStore.getState()
+  const { universes, websites } = getCatalog()
+  const universe = universes.find((u) => u.id === activeUniverseId)
+  const website = websites.find((w) => w.id === selectedWebsiteId)
+  if (viewMode === 'website' && website && universe) return `${website.description ? `${website.description} ` : ''}${website.name} in the ${universe.name} universe of The WebGalaxy.`.slice(0, 160)
+  if (viewMode === 'universe' && universe) return `${universe.description}. ${websites.filter((w) => w.universeId === universe.id).length} websites in the ${universe.name} universe of The WebGalaxy.`
+  return DEFAULT_DESCRIPTION
 }

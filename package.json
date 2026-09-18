@@ -14,7 +14,7 @@
     "dev": "concurrently -n web,api -c cyan,magenta \"npm:dev:web\" \"npm:dev:api\"",
     "dev:web": "vite",
     "dev:api": "npm run dev --workspace backend",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run prerender",
     "build:all": "npm run build && npm run build --workspace backend",
     "lint": "oxlint src api backend/src",
     "typecheck": "tsc -p api/tsconfig.json && npm run typecheck --workspace backend",
@@ -28,7 +28,8 @@
     "test:e2e:mobile": "node e2e/galaxy.e2e.mjs --mobile && node e2e/platform.e2e.mjs --mobile",
     "import:curlie": "npm run import:curlie --workspace backend --",
     "logos": "npm run logos --workspace backend --",
-    "layout": "npm run layout --workspace backend --"
+    "layout": "npm run layout --workspace backend --",
+    "prerender": "npm run prerender --workspace backend"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

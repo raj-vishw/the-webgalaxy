@@ -16,7 +16,8 @@
     "test": "node --import tsx --test --test-concurrency=1 test/*.test.ts",
     "import:curlie": "tsx --tsconfig tsconfig.scripts.json scripts/import-curlie.ts",
     "logos": "tsx --tsconfig tsconfig.scripts.json scripts/fetch-logos.ts",
-    "layout": "tsx --tsconfig tsconfig.scripts.json scripts/layout-galaxy.ts"
+    "layout": "tsx --tsconfig tsconfig.scripts.json scripts/layout-galaxy.ts",
+    "prerender": "tsx --tsconfig tsconfig.scripts.json scripts/prerender.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",
