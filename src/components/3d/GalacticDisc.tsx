@@ -40,7 +40,7 @@ const vertexShader = /* glsl */ `
     vec3 p = vec3(c * position.x - s * position.z, position.y, (s * position.x + c * position.z) * uDepth);
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     // Gentler than true perspective so the disc stays visible from far portrait views.
-    gl_PointSize = clamp(aSize * uPixelRatio * pow(520.0 / max(-mv.z, 1.0), 0.7), 1.0, 6.0 * uPixelRatio);
+    gl_PointSize = clamp(aSize * uPixelRatio * pow(520.0 / max(-mv.z, 1.0), 0.7), 1.0, 4.0 * uPixelRatio);
     gl_Position = projectionMatrix * mv;
     vColor = aColor;
     vAlpha = aAlpha;

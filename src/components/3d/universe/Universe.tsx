@@ -1,10 +1,10 @@
-import { Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Group, MathUtils, PerspectiveCamera, Vector3 } from 'three'
 import type { QualityProfile } from '../../../hooks/useQualityProfile'
 import { celestialRegistry } from '../../../lib/celestialRegistry'
 import { labelDeclutter } from '../../../lib/labelDeclutter'
+import { labelLayer } from '../../../lib/labelLayer'
 import { measureLabel } from '../../../lib/labelBox'
 import { buildUniverseGeometry } from '../../../lib/universeGeometry'
 import { sceneMotion } from '../../../lib/sceneMotion'
@@ -13,7 +13,6 @@ import { driftedPosition } from '../../../utils/universeDrift'
 import { useWebsitesInUniverse } from '../../../store/catalogStore'
 import { useGalaxyStore } from '../../../store/galaxyStore'
 import type { UniverseDefinition } from '../../../types/galaxy'
-import { UniverseLabel } from '../../ui/UniverseLabel'
 import { UniverseInteraction } from '../interaction/UniverseInteraction'
 import { GlowSprites } from '../visuals/GlowSprites'
 import { OrbitingBodies } from '../visuals/OrbitingBodies'
@@ -56,7 +55,6 @@ const screenPosition = new Vector3()
 export function Universe({ definition, revealOffset, profile, pixelRatio }: UniverseProps) {
   const rootRef = useRef<Group>(null)
   const spinRef = useRef<Group>(null)
-  const labelRef = useRef<HTMLDivElement>(null)
   const frameRef = useRef<UniverseFrameState>(createUniverseFrameState(definition.name, definition.seed))
   const [hovered, setHovered] = useState(false)
   const active = useGalaxyStore((s) => s.activeUniverseId === definition.id)
@@ -107,7 +105,7 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
     root.scale.setScalar(scale)
     spin.rotation.y += geometry.spinSpeed * delta * sceneMotion.motionScale
 
-    const label = labelRef.current
+    const label = labelLayer.get(definition.id)
     if (label) {
       // Anchor the label just below the structure in *screen* space so it never
       // lands on the bright core, whatever the camera angle or zoom. It also
@@ -120,17 +118,27 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
       screenPosition.copy(worldPosition).project(camera)
       const behind = screenPosition.z > 1
       const box = measureLabel(frame.labelBox, label)
+      const x = ((screenPosition.x + 1) / 2) * size.width
+      const y = ((1 - screenPosition.y) / 2) * size.height + offset
       labelDeclutter.report(definition.id, {
-        x: ((screenPosition.x + 1) / 2) * size.width,
-        y: ((1 - screenPosition.y) / 2) * size.height + offset,
+        x,
+        y,
         halfWidth: box.width / 2,
         halfHeight: box.height / 2,
         priority: (hovered ? 2 : 0) + (active ? 1 : 0) + (behind ? -10 : 0) - distance / 1000,
       })
       frame.label += ((labelDeclutter.isHidden(definition.id) || behind ? 0 : 1) - frame.label) * k
-      label.style.opacity = String(frame.reveal * proximityFade * sceneMotion.labelReveal * frame.label * (1 - haze * 0.9))
-      // Far labels shrink a touch, another depth cue.
-      label.style.transform = `translateY(${offset.toFixed(1)}px) scale(${(1 - haze * 0.35).toFixed(3)})`
+      const opacity = frame.reveal * proximityFade * sceneMotion.labelReveal * frame.label * (1 - haze * 0.9)
+      // Only touch the DOM when something visible changed: style writes are
+      // what the browser charges for, not the arithmetic.
+      const shown = opacity > 0.005 && !behind
+      const opacityText = shown ? opacity.toFixed(2) : '0'
+      if (opacityText !== frame.labelOpacity) label.style.opacity = frame.labelOpacity = opacityText
+      if (shown) {
+        // Far labels shrink a touch, another depth cue.
+        const transform = `translate(${x.toFixed(0)}px, ${y.toFixed(0)}px) scale(${(1 - haze * 0.35).toFixed(2)})`
+        if (transform !== frame.labelTransform) label.style.transform = frame.labelTransform = transform
+      }
     }
   }, -1)
 
@@ -147,11 +155,6 @@ export function Universe({ definition, revealOffset, profile, pixelRatio }: Univ
 
         <UniverseInteraction definition={definition} enabled={!active} onHoverChange={setHovered} />
 
-        <Html center zIndexRange={[5, 0]} style={{ pointerEvents: 'none' }}>
-          <div ref={labelRef} style={{ opacity: 0 }}>
-            <UniverseLabel name={definition.name} hovered={hovered && !active} />
-          </div>
-        </Html>
       </group>
 
       <UniverseContents universe={definition} profile={profile} pixelRatio={pixelRatio} />

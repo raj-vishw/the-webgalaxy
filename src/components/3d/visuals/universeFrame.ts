@@ -13,6 +13,9 @@ export interface UniverseFrameState {
   label: number
   /** Cached label box (CSS px), measured on a slow schedule (see lib/labelBox). */
   labelBox: LabelBox
+  /** Last style values written to the label element, so unchanged frames skip the DOM. */
+  labelOpacity: string
+  labelTransform: string
 }
 
-export const createUniverseFrameState = (name = '', seed = 0): UniverseFrameState => ({ reveal: 0, hover: 0, dim: 0, label: 1, labelBox: createLabelBox(name.toUpperCase(), seed, 9) })
+export const createUniverseFrameState = (name = '', seed = 0): UniverseFrameState => ({ reveal: 0, hover: 0, dim: 0, label: 1, labelBox: createLabelBox(name.toUpperCase(), seed, 9), labelOpacity: '', labelTransform: '' })

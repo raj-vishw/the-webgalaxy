@@ -1,10 +1,12 @@
 import { Canvas } from '@react-three/fiber'
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useCallback, useState } from 'react'
 import { useQualityProfile } from '../../hooks/useQualityProfile'
+import { baselineDpr } from '../../lib/renderScale'
 import { useGalaxyStore } from '../../store/galaxyStore'
 import { BackgroundNebula } from './BackgroundNebula'
 import { CameraController } from './camera/CameraController'
 import { AdaptiveQuality } from './AdaptiveQuality'
+import { ResolutionGovernor } from './ResolutionGovernor'
 import { DevBridge } from './DevBridge'
 import { PerfMonitor } from './PerfMonitor'
 import { EmphasisBridge } from './EmphasisBridge'
@@ -24,12 +26,16 @@ const BACKGROUND = '#020308'
 /** Full-viewport React Three Fiber scene: the whole of The WebGalaxy. */
 export function WebGalaxyScene() {
   const profile = useQualityProfile()
-  const pixelRatio = Math.min(window.devicePixelRatio || 1, profile.maxDpr)
+  // The canvas resolution is governed (see ResolutionGovernor): it starts at
+  // the tier's pixel budget for this viewport and follows the frame rate.
+  // Every point shader sizes in device pixels, so the same ratio flows down.
+  const [pixelRatio, setPixelRatio] = useState(() => baselineDpr(profile.tier, window.innerWidth, window.innerHeight, profile.maxDpr))
+  const onResolution = useCallback((dpr: number) => setPixelRatio(dpr), [])
 
   return (
     <Canvas
       className="absolute inset-0"
-      dpr={[1, profile.maxDpr]}
+      dpr={pixelRatio}
       camera={{ fov: 50, near: 0.5, far: 5000, position: [0, 2, 300] }}
       gl={{ antialias: false, powerPreference: 'high-performance', alpha: false, stencil: false }}
       flat
@@ -47,6 +53,7 @@ export function WebGalaxyScene() {
       <EmphasisBridge />
       {import.meta.env.DEV && <DevBridge />}
       {import.meta.env.DEV && <PerfMonitor />}
+      <ResolutionGovernor profile={profile} dpr={pixelRatio} onChange={onResolution} />
       <AdaptiveQuality />
       <CameraController profile={profile} />
       <BackgroundNebula />

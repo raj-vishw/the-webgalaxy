@@ -3,7 +3,9 @@ import { Bloom, EffectComposer, Vignette } from '@react-three/postprocessing'
 /**
  * Post-processing stack: a restrained bloom so bright cores breathe, and a
  * soft vignette to pull focus to the centre. Lazy-loaded and skipped entirely
- * on low-end devices.
+ * on low-end devices. (Halving the bloom's resolution was measured and made
+ * no difference — the mipmap blur is already cheap; the canvas resolution is
+ * what matters, see ResolutionGovernor.)
  */
 export default function Effects() {
   return (

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PerfReadout } from './components/3d/PerfMonitor'
 import { WebGalaxyScene } from './components/3d/WebGalaxyScene'
+import { UniverseLabelLayer } from './components/ui/UniverseLabelLayer'
 import { DataStatus } from './components/data/DataStatus'
 import { Landing } from './components/entry/Landing'
 import { LoadingScreen } from './components/entry/LoadingScreen'
@@ -75,6 +76,7 @@ export default function App() {
   return (
     <main className="relative h-full w-full overflow-hidden bg-space-950">
       <WebGalaxyScene />
+      <UniverseLabelLayer />
       <Landing />
       <Onboarding />
       <GalaxyNavigation />

@@ -23,7 +23,7 @@ The WebGalaxy is an immersive 3D map of the web. Every *universe* is a category 
 - Filters (universe × type × prominence × trending/emerging/related/alternatives) that let non-matches recede
 - Deep links: `/website/github`, `/universe/ai`; the address bar and browser history follow the journey
 - Public **+ Add** submissions with duplicate detection and moderation before anything appears
-- Adaptive graphics (Auto steps down on sustained low frame rates; High/Medium/Low overrides), reduced-motion support, accessible list view (`?view=list`) and a WebGL-less fallback
+- Adaptive graphics: the canvas renders to a pixel budget and follows the measured frame rate (`ResolutionGovernor`), and Auto lowers the tier only when resolution has no more to give; High/Medium/Low overrides, reduced-motion support, accessible list view (`?view=list`) and a WebGL-less fallback
 - Backend API and PostgreSQL database with moderation of submissions and curated trending flags
 - Offline resilience: the last loaded catalogue (or the bundled one) keeps the galaxy rendering when the API is unreachable
 

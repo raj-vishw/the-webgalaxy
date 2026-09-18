@@ -40,7 +40,7 @@ export const starVertexShader = /* glsl */ `
 
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     float atten = mix(1.0, 240.0 / max(-mv.z, 1.0), uAttenuation);
-    gl_PointSize = clamp(aSize * uPixelRatio * atten, 1.0, 12.0 * uPixelRatio);
+    gl_PointSize = clamp(aSize * uPixelRatio * atten, 1.0, 9.0 * uPixelRatio);
     gl_Position = projectionMatrix * mv;
 
     // Stars appear one by one during the intro: each has its own threshold.
