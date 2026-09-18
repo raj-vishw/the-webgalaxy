@@ -75,6 +75,5 @@ export const universeAffinities: UniverseAffinity[] = [
   { universeIds: ['hardware', 'technology'], reason: 'Silicon and systems' },
   { universeIds: ['fashion', 'shopping'], reason: 'Style and where to find it' },
   { universeIds: ['literature', 'arts'], reason: 'Words and craft' },
-  { universeIds: ['religion', 'society'], reason: 'Belief and community' },
   { universeIds: ['vehicles', 'recreation'], reason: 'On the road and off it' },
 ]

@@ -28,12 +28,12 @@ const WRITE = 'write' in args
 if (ARM_COUNT !== 4) throw new Error('ARMS below assume four arms')
 const ARMS: string[][] = [
   ['technology', 'hardware', 'software', 'development', 'ai', 'cybersecurity', 'internet', 'productivity', 'design', 'gaming'],
-  ['arts', 'music', 'literature', 'entertainment', 'museums', 'reference', 'education', 'kids', 'communities', 'religion'],
+  ['arts', 'music', 'literature', 'entertainment', 'museums', 'reference', 'education', 'kids', 'communities'],
   ['health', 'medicine', 'food', 'home', 'nature', 'travel', 'recreation', 'sports', 'fashion', 'vehicles'],
   ['society', 'news', 'government', 'business', 'finance', 'crypto', 'startups', 'shopping', 'science'],
 ]
 /** Universes lifted out of the disc, and how far (world units). */
-const HALO: Record<string, number> = { kids: 26, crypto: -24, nature: 22, religion: -20, gaming: 18, science: -22, travel: 16, design: -14 }
+const HALO: Record<string, number> = { kids: 26, crypto: -24, nature: 22, gaming: 18, science: -22, travel: 16, design: -14 }
 
 /** Disc thickness (world units) for universes that are not in the halo. */
 const THICKNESS = 7

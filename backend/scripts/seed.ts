@@ -1,12 +1,14 @@
 /**
- * `npm run db:seed [-- --reset [--yes]]`
+ * `npm run db:seed [-- --reset [--yes]] [--prune]`
  *
  * Migrates the bundled catalogue into the database: universes, websites
  * (curated + directory import), tags, relationships and the static trend
  * snapshot — read from the frontend's `src/data/*.ts` so there is exactly
  * one copy of the catalogue.
  * Upserts by slug, so re-running refreshes the seeded rows without touching
- * content added through the admin. `--reset` truncates everything first.
+ * content added through the admin. `--reset` truncates everything first;
+ * `--prune` deletes universes that are no longer in the bundled catalogue
+ * (with their websites), which a plain upsert deliberately leaves alone.
  */
 import { inArray, sql } from 'drizzle-orm'
 import { directoryRelationships, directoryWebsites } from '../../src/data/directory.ts'
@@ -25,6 +27,7 @@ import { parseWebsiteUrl } from '../src/utils/url.ts'
 
 const reset = process.argv.includes('--reset')
 const confirmed = process.argv.includes('--yes')
+const prune = process.argv.includes('--prune')
 /** Curated entries first: they win over a directory import of the same slug. */
 const seedWebsites = [...curatedWebsites, ...directoryWebsites]
 const seedRelationships = [...curatedRelationships, ...directoryRelationships]
@@ -76,6 +79,17 @@ for (const [index, u] of seedUniverses.entries()) {
   universeIds.set(u.id, row.id)
 }
 log('universes', { count: universeIds.size })
+const stale = (await db.select({ slug: universes.slug }).from(universes)).map((r) => r.slug).filter((slug) => !universeIds.has(slug))
+if (stale.length && prune) {
+  // Websites restrict universe deletion: remove them first (tags and
+  // relationships cascade), then the universes themselves.
+  const staleIds = (await db.select({ id: universes.id }).from(universes).where(inArray(universes.slug, stale))).map((r) => r.id)
+  await db.delete(websites).where(inArray(websites.universeId, staleIds))
+  await db.delete(universes).where(inArray(universes.id, staleIds))
+  log('pruned universes not in the catalogue (and their websites)', { removed: stale })
+} else if (stale.length) {
+  log('universes in the database but not in the catalogue — re-run with --prune to remove them', { stale })
+}
 
 // ─── Websites (batched: a hosted database is hundreds of milliseconds away) ─
 const CHUNK = 200

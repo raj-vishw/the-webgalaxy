@@ -22,13 +22,13 @@
     "test:web": "vitest run",
     "test:api": "npm test --workspace backend",
     "db:migrate": "npm run db:migrate --workspace backend",
-    "db:seed": "npm run db:seed --workspace backend",
+    "db:seed": "npm run db:seed --workspace backend --",
     "preview": "vite preview",
     "test:e2e": "node e2e/galaxy.e2e.mjs && node e2e/platform.e2e.mjs && node e2e/console.e2e.mjs",
     "test:e2e:mobile": "node e2e/galaxy.e2e.mjs --mobile && node e2e/platform.e2e.mjs --mobile",
-    "import:curlie": "npm run import:curlie --workspace backend",
-    "logos": "npm run logos --workspace backend",
-    "layout": "npm run layout --workspace backend"
+    "import:curlie": "npm run import:curlie --workspace backend --",
+    "logos": "npm run logos --workspace backend --",
+    "layout": "npm run layout --workspace backend --"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

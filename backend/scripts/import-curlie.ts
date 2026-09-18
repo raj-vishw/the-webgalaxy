@@ -48,6 +48,9 @@ const COMETS_PER_UNIVERSE = 3
 /** Only these Curlie files hold English topic categories. */
 const FILES = ['Top', 'Arts', 'Business', 'KT', 'Society']
 
+/** Curlie categories that are never charted, whatever the broad rule below would say. */
+const SKIPPED_PREFIXES = ['Society/Religion_and_Spirituality']
+
 /**
  * Curlie category prefix → universe id. The first matching rule wins, so the
  * specific entries come before the broad ones. Anything unmatched is skipped.
@@ -127,7 +130,6 @@ const UNIVERSE_RULES: [prefix: string, universe: string][] = [
   ['Shopping/Food', 'food'],
   ['Recreation/Travel', 'travel'],
   ['Business/Hospitality', 'travel'],
-  ['Society/Religion_and_Spirituality', 'religion'],
   ['Society/Law', 'government'],
   ['Society/Government', 'government'],
   ['Society/Politics', 'government'],
@@ -188,6 +190,7 @@ async function* rows(file: string, separator = '\t'): AsyncGenerator<string[]> {
 }
 
 function universeFor(path: string): { universe: string; prefix: string } | null {
+  if (SKIPPED_PREFIXES.some((prefix) => path.startsWith(prefix))) return null
   for (const [prefix, universe] of UNIVERSE_RULES) if (path.startsWith(prefix)) return { universe, prefix }
   return null
 }
@@ -195,7 +198,7 @@ function universeFor(path: string): { universe: string; prefix: string } | null 
 /**
  * The neighbourhood a listing belongs to inside its universe: the category
  * segment right after the part of the path that chose the universe
- * ("Society/Religion_and_Spirituality/…" → "Religion & Spirituality",
+ * ("Society/Law/Legal_Information/…" → "Legal Information",
  * "Home/Cooking/Baking/…" → "Baking"). Listings sitting directly in the
  * choosing category have no topic and gather at the universe's core.
  */

@@ -15,7 +15,7 @@ The WebGalaxy is an immersive 3D map of the web. Every *universe* is a category 
 
 ## Features
 
-- 39 universes and 4 200+ websites out of the box — 110 per universe: hand-curated flagships (about 340, including the whole AI, Productivity, Crypto and Startups scenes, which the older directories do not cover) plus a directory import charted from Curlie.org (titles, descriptions, categories) and ranked with the Tranco list — see *Catalogue data*
+- 38 universes and 4 100+ websites out of the box — 110 per universe: hand-curated flagships (about 340, including the whole AI, Productivity, Crypto and Startups scenes, which the older directories do not cover) plus a directory import charted from Curlie.org (titles, descriptions, categories) and ranked with the Tranco list — see *Catalogue data*
 - Cinematic entry: loading → landing over the live galaxy → a short flight in (longer on the first visit) → a three-card welcome for first-timers, skippable throughout
 - Free exploration: drag, scroll/pinch, click/tap, hover labels, a top-down minimap, location indicator, keyboard shortcuts (`?` shows them)
 - Website panel: description, tags, prominence, connections (with an accessible text twin), *Explore Similar / Find Alternatives / Works With*, *You may also explore*, Visit, Share (native share or copied link)
@@ -96,9 +96,10 @@ The bundled catalogue has two layers:
 npm run db:migrate   # apply migrations (backend/drizzle) to the configured database
 npm run db:seed      # migrate + seed universes, websites, tags, relationships, trend snapshot
 npm run db:seed -- --reset --yes   # empty every table first (--yes is required for a remote database)
+npm run db:seed -- --prune         # also delete universes (and their websites) that left the catalogue
 ```
 
-Seeding upserts by slug in batches of a few hundred rows, so it takes seconds against a hosted database as well as the embedded one; re-run it after every `import:curlie` or edit of `src/data/*.ts` to bring the database up to date without touching content added through the API.
+Seeding upserts by slug in batches of a few hundred rows, so it takes seconds against a hosted database as well as the embedded one; re-run it after every `import:curlie` or edit of `src/data/*.ts` to bring the database up to date without touching content added through the API. A universe removed from `src/data/universes.ts` stays in the database until you pass `--prune` (the seed lists such universes every run).
 
 Schema changes: edit `backend/src/db/schema.ts`, then `npm run db:generate --workspace backend` to produce the next SQL migration. Migrations are applied automatically when the API starts.
 
