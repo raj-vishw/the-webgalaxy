@@ -32,8 +32,8 @@ export function RelationshipNode({ website, caption, fromUniverseId, arrow, onSe
       >
         <CelestialIcon type={website.objectType} accent={accentFor(website)} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate font-sans text-[13px] text-white">{website.name}</span>
-          <span className="block truncate font-sans text-[10.5px] tracking-[0.06em] text-space-300/70">
+          <span className="block truncate font-sans text-[13px] text-white sm:text-[14px]">{website.name}</span>
+          <span className="block truncate font-sans text-[10.5px] tracking-[0.06em] text-space-300/70 sm:text-[11.5px]">
             {arrow === 'out' ? '→ ' : arrow === 'in' ? '← ' : ''}
             {caption}
             {elsewhere ? <span className="text-space-300/50"> · {elsewhere} Universe</span> : null}

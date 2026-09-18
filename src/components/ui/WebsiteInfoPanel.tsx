@@ -100,14 +100,14 @@ export function WebsiteInfoPanel() {
       aria-hidden={!visible}
       className={[
         'absolute z-20',
-        'inset-x-3 bottom-20 sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:right-9 sm:w-[300px] sm:-translate-y-1/2',
+        'inset-x-3 bottom-20 sm:inset-x-auto sm:bottom-auto sm:top-1/2 sm:right-9 sm:w-[380px] sm:-translate-y-1/2',
         'transition-[opacity,transform] duration-700 ease-out',
         visible ? 'opacity-100 translate-x-0' : 'pointer-events-none opacity-0 sm:translate-x-3',
       ].join(' ')}
     >
       <div
         // Scrolls inside itself when the connections make it tall; never under the header.
-        className="relative max-h-[42vh] overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-[#070a18]/60 px-6 pt-6 pb-5 backdrop-blur-md sm:max-h-[calc(100vh-9.5rem)]"
+        className="relative max-h-[48vh] overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-[#070a18]/60 px-6 pt-6 pb-5 backdrop-blur-md sm:max-h-[calc(100vh-9rem)] sm:px-7 sm:pt-7 sm:pb-6"
         style={{
           boxShadow: `0 0 0 1px rgba(255,255,255,0.02) inset, 0 24px 70px rgba(0,0,0,0.5), 0 0 40px ${accent}22`,
         }}
@@ -124,28 +124,28 @@ export function WebsiteInfoPanel() {
         <div className="flex items-center gap-4">
           <div
             aria-hidden
-            className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10"
+            className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/10 sm:h-16 sm:w-16"
             style={{ background: `radial-gradient(circle at 35% 30%, ${accent}66, ${accent}14 70%)`, boxShadow: `0 0 22px ${accent}33` }}
           >
             {website?.logo ? (
-              <img src={website.logo} alt="" className="h-7 w-7 object-contain" />
+              <img src={website.logo} alt="" className="h-7 w-7 object-contain sm:h-9 sm:w-9" />
             ) : website ? (
               <LogoMark
                 websiteId={website.id}
                 universeId={website.universeId}
-                size={28}
+                size={36}
                 fallback={<span className="font-sans text-[13px] font-semibold tracking-[0.04em] text-white/90">{glyphFor(website)}</span>}
               />
             ) : null}
           </div>
           <div className="min-w-0">
             <h2
-              className="truncate font-sans text-[16px] font-medium tracking-[0.12em] uppercase text-white"
+              className="truncate font-sans text-[16px] font-medium tracking-[0.12em] uppercase text-white sm:text-[19px]"
               style={{ textShadow: '0 0 18px rgba(190,205,255,0.35)' }}
             >
               {website?.name ?? ''}
             </h2>
-            <p className="mt-1 font-sans text-[11px] tracking-[0.18em] uppercase text-space-300">
+            <p className="mt-1 font-sans text-[11px] tracking-[0.18em] uppercase text-space-300 sm:text-[12px]">
               {universe ? `${universe.name} Universe` : 'The WebGalaxy'}
             </p>
             {badge && (
@@ -159,14 +159,14 @@ export function WebsiteInfoPanel() {
           </div>
         </div>
 
-        <p className="mt-5 font-sans text-[13px] leading-6 text-space-100/85" aria-busy={detailStatus === 'loading'}>
+        <p className="mt-5 font-sans text-[13px] leading-6 text-space-100/85 sm:text-[14.5px] sm:leading-7" aria-busy={detailStatus === 'loading'}>
           {website?.description?.trim() ||
             (detailStatus === 'loading' || (website && !website.detailLoaded && detailStatus !== 'error')
               ? 'Charting this world…'
               : 'No description has been charted for this world yet.')}
         </p>
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[10.5px] tracking-[0.16em] uppercase text-space-300/75">
+        <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 font-sans text-[10.5px] tracking-[0.16em] uppercase text-space-300/75 sm:text-[11.5px]">
           <span>{website ? TYPE_LABEL[website.objectType] : ''}</span>
           {website?.tags?.map((tag) => (
             <span key={tag} className="flex items-center gap-2">
@@ -199,7 +199,7 @@ export function WebsiteInfoPanel() {
                   aria-pressed={active}
                   title={enabled ? undefined : 'Nothing recorded for this website'}
                   className={[
-                    'rounded-full border px-2.5 py-1 font-sans text-[10px] tracking-[0.14em] uppercase transition-colors duration-300',
+                    'rounded-full border px-2.5 py-1 font-sans text-[10px] tracking-[0.14em] uppercase transition-colors duration-300 sm:px-3 sm:py-1.5 sm:text-[11px]',
                     active ? 'border-white/60 bg-white/10 text-white' : 'border-white/15 text-white/75 hover:border-white/45 hover:text-white',
                     'disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-white/15',
                     focusRing,
@@ -227,7 +227,7 @@ export function WebsiteInfoPanel() {
             disabled={!url || opening}
             className={[
               buttonBase,
-              'flex-1 whitespace-nowrap border px-5 py-2.5 text-white/90',
+              'flex-1 whitespace-nowrap border px-5 py-2.5 text-white/90 sm:py-3',
               url
                 ? 'border-white/20 hover:border-white/50 hover:text-white active:scale-[0.98]'
                 : 'cursor-not-allowed border-white/10 text-space-300/50',
