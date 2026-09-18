@@ -1,5 +1,5 @@
 /**
- * `npm run import:curlie [-- --per-universe=50 --max-rank=150000]`
+ * `npm run import:curlie [-- --per-universe=110 --max-rank=300000]`
  *
  * Builds `src/data/directory.ts` — the imported part of the catalogue — from
  * two free datasets that must be unpacked under `content/` (git-ignored):
@@ -37,7 +37,9 @@ const CONTENT = resolve(ROOT, 'content')
 const OUTPUT = resolve(ROOT, 'src/data/directory.ts')
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=') as [string, string]))
-const PER_UNIVERSE = Number(args['per-universe'] ?? 90)
+/** Websites per universe, hand-curated ones included, so every universe ends up the same size. */
+const PER_UNIVERSE = Number(args['per-universe'] ?? 110)
+/** Preferred popularity cut-off; a universe that runs short reaches further down the Tranco list. */
 const MAX_RANK = Number(args['max-rank'] ?? 300_000)
 /** Neighbourhoods per universe: enough to give it structure, few enough to read at a glance. */
 const TOPICS_PER_UNIVERSE = Number(args['topics'] ?? 9)
@@ -55,6 +57,23 @@ const UNIVERSE_RULES: [prefix: string, universe: string][] = [
   ['Computers/Robotics', 'ai'],
   ['Computers/Artificial_Life', 'ai'],
   ['Computers/Speech_Technology', 'ai'],
+  ['Computers/Software/Databases/Data_Mining', 'ai'],
+  ['Computers/Software/Office_Suites', 'productivity'],
+  ['Computers/Software/Project_Management', 'productivity'],
+  ['Computers/Software/Word_Processors', 'productivity'],
+  ['Computers/Software/Spreadsheets', 'productivity'],
+  ['Computers/Software/Presentation', 'productivity'],
+  ['Computers/Software/Groupware', 'productivity'],
+  ['Computers/Software/Document_Management', 'productivity'],
+  ['Computers/Software/Workflow', 'productivity'],
+  ['Computers/Software/Backup', 'productivity'],
+  ['Computers/Software/File_Management', 'productivity'],
+  ['Computers/Software/Editors', 'productivity'],
+  ['Computers/Software/Freeware/Personal_Information_Managers', 'productivity'],
+  ['Business/Management/Project_and_Program_Management', 'productivity'],
+  ['Reference/Knowledge_Management', 'productivity'],
+  ['Business/Small_Business', 'startups'],
+  ['Business/Financial_Services/Venture_Capital', 'startups'],
   ['Computers/Security', 'cybersecurity'],
   ['Computers/Hacking', 'cybersecurity'],
   ['Computers/Programming', 'development'],
@@ -271,10 +290,7 @@ function accentFor(universeId: string, slug: string, topic: string | undefined):
 
 // ─── Read Tranco ─────────────────────────────────────────────────────────────
 const rank = new Map<string, number>()
-for await (const [r, host] of rows(resolve(CONTENT, 'top-1m.csv'), ',')) {
-  const n = Number(r)
-  if (n <= MAX_RANK) rank.set(host.trim(), n)
-}
+for await (const [r, host] of rows(resolve(CONTENT, 'top-1m.csv'), ',')) rank.set(host.trim(), Number(r))
 log('tranco ranks loaded', { hosts: rank.size, maxRank: MAX_RANK })
 
 // ─── Read Curlie categories, then websites ───────────────────────────────────
@@ -321,10 +337,13 @@ for (const universe of universes) {
     log('no candidates for universe', { universe: universe.id })
     continue
   }
+  const curatedHere = curated.filter((w) => w.universeId === universe.id).length
+  const target = Math.max(0, PER_UNIVERSE - curatedHere)
   // Group by neighbourhood; keep the deepest few so each has real members,
   // then take the best-ranked sites round-robin across them.
   const buckets = new Map<string, Candidate[]>()
   for (const c of pool.values()) {
+    if (c.rank > MAX_RANK) continue
     const key = c.topic ?? ''
     const list = buckets.get(key) ?? []
     list.push(c)
@@ -335,17 +354,27 @@ for (const universe of universes) {
     .sort((a, b) => b.length - a.length || a[0].rank - b[0].rank)
   const ordered = bySize.slice(0, TOPICS_PER_UNIVERSE).sort((a, b) => a[0].rank - b[0].rank)
   const picks: Candidate[] = []
-  while (picks.length < PER_UNIVERSE && ordered.some((l) => l.length)) {
+  while (picks.length < target && ordered.some((l) => l.length)) {
     for (const list of ordered) {
       const next = list.shift()
       if (next) picks.push(next)
-      if (picks.length >= PER_UNIVERSE) break
+      if (picks.length >= target) break
     }
   }
   // A small universe (few topics deep enough) tops up from the rest, by rank.
   for (const c of bySize.slice(TOPICS_PER_UNIVERSE).flat().sort((a, b) => a.rank - b.rank)) {
-    if (picks.length >= PER_UNIVERSE) break
+    if (picks.length >= target) break
     picks.push(c)
+  }
+  // Still short: reach past the popularity cut-off, best-ranked first, and
+  // prefer the neighbourhoods the universe already has so they stay coherent.
+  if (picks.length < target) {
+    const kept = new Set(ordered.map((l) => l[0]?.topic).concat(picks.map((c) => c.topic)))
+    const reserve = [...pool.values()].filter((c) => c.rank > MAX_RANK).sort((a, b) => Number(!kept.has(a.topic)) - Number(!kept.has(b.topic)) || a.rank - b.rank)
+    for (const c of reserve) {
+      if (picks.length >= target) break
+      picks.push(c)
+    }
   }
   picks.sort((a, b) => a.rank - b.rank)
   let comets = 0
@@ -380,7 +409,7 @@ for (const universe of universes) {
       rank: c.rank,
     })
   }
-  log(`selected for ${universe.id}`, { picked: picks.length, pool: pool.size, topics: buckets.size })
+  log(`selected for ${universe.id}`, { picked: picks.length, curated: curatedHere, pool: pool.size, topics: buckets.size })
 }
 
 // ─── Some moons orbit a planet or star of their own neighbourhood (visual only) ─
@@ -429,7 +458,7 @@ const source = `import type { WebsiteDefinition, WebsiteRelationship } from '../
  * Websites charted from the Curlie.org directory (curlie.org, CC BY 3.0 —
  * titles and descriptions are Curlie's editorial content) ranked by the
  * Tranco list (tranco-list.eu). ${selected.length} websites across
- * ${new Set(selected.map((w) => w.universeId)).size} universes; each universe holds at most ${PER_UNIVERSE}.
+ * ${new Set(selected.map((w) => w.universeId)).size} universes; together with the curated entries each universe holds ${PER_UNIVERSE}.
  * Each website carries its Curlie sub-topic as \`topic\`, which the scene uses
  * to place neighbourhoods. Relationships connect neighbours from the same
  * Curlie category as equals.

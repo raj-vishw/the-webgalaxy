@@ -15,7 +15,7 @@ The WebGalaxy is an immersive 3D map of the web. Every *universe* is a category 
 
 ## Features
 
-- 39 universes and 3 300+ websites out of the box: hand-curated flagships (including Productivity, Crypto and Startups) plus a directory import charted from Curlie.org (titles, descriptions, categories) and ranked with the Tranco list — see *Catalogue data*
+- 39 universes and 4 200+ websites out of the box — 110 per universe: hand-curated flagships (about 340, including the whole AI, Productivity, Crypto and Startups scenes, which the older directories do not cover) plus a directory import charted from Curlie.org (titles, descriptions, categories) and ranked with the Tranco list — see *Catalogue data*
 - Cinematic entry: loading → landing over the live galaxy → a short flight in (longer on the first visit) → a three-card welcome for first-timers, skippable throughout
 - Free exploration: drag, scroll/pinch, click/tap, hover labels, a top-down minimap, location indicator, keyboard shortcuts (`?` shows them)
 - Website panel: description, tags, prominence, connections (with an accessible text twin), *Explore Similar / Find Alternatives / Works With*, *You may also explore*, Visit, Share (native share or copied link)
@@ -88,15 +88,17 @@ The bundled catalogue has two layers:
 
 - `public/logos/` — **generated** by `npm run logos`: one small icon atlas per universe plus `manifest.json`, built from each site's favicon (fetched once into the git-ignored `content/logos/` cache). Inside a universe every body wears its icon as an emblem and every minor site is a medallion showing it; the website panel uses it too. Sites without an icon keep their monogram, so the step is optional — but commit the atlases, since the deployed site serves them as static files.
 
-  Only English topic categories are read (Regional, other languages and Adult are skipped); each Curlie category maps to a universe in the importer's rule table, and the best-ranked sites are taken round-robin across the universe's largest sub-topics so every universe stays varied (`--per-universe=90 --max-rank=300000 --topics=9` are the defaults). Each website keeps its sub-topic as `topic`; inside a universe, websites sharing a topic form a captioned neighbourhood, flagships and small topics gather at the core, and only the most prominent sites are drawn as full bodies — the rest are medallions (or bright points without icons) that name themselves on hover. All bodies are the same size: identity comes from the icon, monogram and surface, prominence from the halo and the permanent name. The directory ships as its own lazy chunk, so the first paint only carries the curated set, and `npm run db:seed` loads both layers into the database. Curlie's attribution is shown in the help menu and the list view — keep it if you keep the data.
+  Only English topic categories are read (Regional, other languages and Adult are skipped); each Curlie category maps to a universe in the importer's rule table, and the best-ranked sites are taken round-robin across the universe's largest sub-topics so every universe stays varied. `--per-universe=110` is the size of every universe *including* its curated entries, so a universe with many hand-picked flagships imports fewer sites; `--max-rank=300000` is the preferred popularity cut-off, and a universe that runs short (few Curlie listings, as for AI) reaches further down the Tranco list rather than staying small. Categories Curlie does not have at all (crypto) are curated by hand only. Each website keeps its sub-topic as `topic`; inside a universe, websites sharing a topic form a captioned neighbourhood, flagships and small topics gather at the core, and only the most prominent sites are drawn as full bodies — the rest are medallions (or bright points without icons) that name themselves on hover. All bodies are the same size: identity comes from the icon, monogram and surface, prominence from the halo and the permanent name. The directory ships as its own lazy chunk, so the first paint only carries the curated set, and `npm run db:seed` loads both layers into the database. Curlie's attribution is shown in the help menu and the list view — keep it if you keep the data.
 
 ## Database setup
 
 ```sh
 npm run db:migrate   # apply migrations (backend/drizzle) to the configured database
 npm run db:seed      # migrate + seed universes, websites, tags, relationships, trend snapshot
-npm run db:seed -- --reset   # empty every table first
+npm run db:seed -- --reset --yes   # empty every table first (--yes is required for a remote database)
 ```
+
+Seeding upserts by slug in batches of a few hundred rows, so it takes seconds against a hosted database as well as the embedded one; re-run it after every `import:curlie` or edit of `src/data/*.ts` to bring the database up to date without touching content added through the API.
 
 Schema changes: edit `backend/src/db/schema.ts`, then `npm run db:generate --workspace backend` to produce the next SQL migration. Migrations are applied automatically when the API starts.
 
